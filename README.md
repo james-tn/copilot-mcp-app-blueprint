@@ -12,8 +12,16 @@ stages and steps, a data model & integrations, and the personas (roles) involved
 — but the architecture applies to any data-rich agent that needs more than chat
 bubbles.
 
-<!-- Replace with a real screenshot/GIF of the widget rendering in Copilot. -->
-<!-- ![Blueprint widget in Copilot](docs/images/widget.png) -->
+### See it in action
+
+The widget rendering inline in Microsoft 365 Copilot — from creating a blueprint
+to drilling into a case lifecycle, reviewing personas, and exporting the result:
+
+| Create a Blueprint | Workflow details (case lifecycle) |
+|---|---|
+| [![Create a Blueprint wizard — industry, sub-industry and purpose](media/new_flow.png)](media/new_flow.png) | [![Workflow Details — primary and alternate stages with typed steps](media/workflow_detail.png)](media/workflow_detail.png) |
+| **Personas** | **Summary & export** |
+| [![Personas — the roles involved in the workflows, with step navigation](media/persona.png)](media/persona.png) | [![Summary — architecture counts and export to PDF / Excel / importable Blueprint](media/summary.png)](media/summary.png) |
 
 ---
 
