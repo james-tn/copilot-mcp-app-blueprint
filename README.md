@@ -45,7 +45,7 @@ This project started as an Adaptive Cards Custom Engine Agent (now in
 
 ## What you get
 
-- A **Python MCP server** (FastMCP) exposing 7 tools, a UI resource, and public
+- A **Python MCP server** (FastMCP) exposing 11 tools, a UI resource, and public
   export routes (PDF / Excel / importable JSON) — **pure-Python, zero compiled
   deps**, so it containerizes and builds anywhere.
 - A **React 18 + Fluent UI v9** widget, built by Vite into a **single self-contained
@@ -99,7 +99,7 @@ the widget is also advertised via `listResourceTemplates` so the host discovers 
 ├── server/            # Python MCP server (FastMCP, uv project)
 │   └── pega_mcp/
 │       ├── server.py        # bootstrap: resources, tools, auth middleware, export routes
-│       ├── tools.py         # 7 tool handlers (+ result _meta.ui.resourceUri)
+│       ├── tools.py         # 11 tool handlers (+ result _meta.ui.resourceUri)
 │       ├── store.py / data.py   # in-memory demo blueprint + view payloads
 │       ├── auth.py          # pure-Python bearer validation (Entra JWT or generic userinfo)
 │       ├── settings.py      # env-driven config (PEGA_MCP_*)
