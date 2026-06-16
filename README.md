@@ -175,9 +175,10 @@ az containerapp update -g my-rg -n my-mcp-app \
 > writer and the JWT/JWKS verification here are both hand-rolled in pure Python.
 
 > **Going to production?** See **[docs/production-architecture.md](docs/production-architecture.md)**
-> for a hardened Azure topology — secure connectivity to **real backend systems**
-> (Pega / systems of record), **Cosmos DB** for state, Front Door + APIM + WAF,
-> private networking, managed identities, observability and CI/CD.
+> for a hardened Azure topology with diagrams — **ISV multi-tenant distribution via
+> the Microsoft commercial marketplace**, secure connectivity to **real backend
+> systems** (Pega / systems of record), **Cosmos DB** for state, Front Door + APIM
+> + WAF, private networking, managed identities, observability and CI/CD.
 
 ---
 
@@ -254,7 +255,7 @@ That is the recommended pattern for an ISV. Details in
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) — components and the MCP-Apps rendering contract
-- [docs/production-architecture.md](docs/production-architecture.md) — hardened Azure topology: backend connectivity, Cosmos DB state, Front Door/APIM/WAF, private networking, observability, CI/CD
+- [docs/production-architecture.md](docs/production-architecture.md) — hardened Azure topology (with diagrams): ISV multi-tenant distribution via the Microsoft marketplace, backend connectivity, Cosmos DB state, Front Door/APIM/WAF, private networking, observability, CI/CD
 - [docs/security-and-login.md](docs/security-and-login.md) — the Copilot↔MCP auth design and the three modes
 - [docs/auth-generic-oauth.md](docs/auth-generic-oauth.md) · [docs/auth-runbook.md](docs/auth-runbook.md) — auth runbooks
 
