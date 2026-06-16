@@ -36,6 +36,37 @@ def _result(text: str, structured: dict[str, Any], *, ui: bool = True) -> types.
 
 # ── Tool handlers ────────────────────────────────────────────────────────────
 
+async def show_create() -> types.CallToolResult:
+    """Render the 'Create a Blueprint' wizard (industry → sub-industry → purpose)."""
+    data = store.view_create()
+    text = (
+        "Start a new blueprint: pick an industry, a sub-industry, and an application "
+        "purpose, then Generate. I'll design the workflows, data model and personas."
+    )
+    return _result(text, data)
+
+
+async def create_blueprint(industry: str = "", sub_industry: str = "",
+                           purpose: str = "", description: str = "") -> types.CallToolResult:
+    """Generate a brand-new blueprint from an industry / sub-industry / purpose."""
+    if not purpose.strip():
+        data = store.view_create()
+        return _result(
+            "To create a blueprint I need at least an application purpose (e.g. 'Access Request'). "
+            "Pick an industry, sub-industry and purpose, then Generate.",
+            data,
+        )
+    bp = store.create_blueprint(industry, sub_industry, purpose, description)
+    data = store.view_overview(bp["id"])
+    c = store.blueprint_counts(bp)
+    text = (
+        f"Created blueprint '{bp['title']}' ({bp['subIndustry']} · {bp['id']}): "
+        f"{c['caseTypes']} workflows, {c['stages']} stages, {c['steps']} steps, "
+        f"{c['dataObjects']} data objects and {c['personas']} personas. Showing the overview."
+    )
+    return _result(text, data)
+
+
 async def show_blueprint(phase: str = "") -> types.CallToolResult:
     """Open the blueprint and render the requested step (default: overview)."""
     p = (phase or "").strip().lower()
@@ -143,6 +174,20 @@ async def overview_prompt() -> list[types.PromptMessage]:
 # ── Registries consumed by server.py ─────────────────────────────────────────
 
 TOOL_SPECS: list[dict[str, Any]] = [
+    {"name": "show_create", "handler": show_create, "ui": True,
+     "description": (
+         "Open the 'Create a Blueprint' wizard so the user can start a NEW application design: it "
+         "renders the industry → sub-industry → application-purpose pickers. Use for 'create a new "
+         "blueprint', 'start a blueprint', 'design a new app', 'new blueprint'.")},
+    {"name": "create_blueprint", "handler": create_blueprint, "ui": True,
+     "description": (
+         "Generate a brand-new blueprint from a selection and render its overview. Parameters: "
+         "'industry' (e.g. 'Banking', 'Cross Industry (e.g. HR, IT, Finance, etc.)'), 'sub_industry' "
+         "(e.g. 'Human Resources', 'Claims'), 'purpose' (the application purpose, e.g. 'Access "
+         "Request', 'Claims Intake'; REQUIRED), and optional 'description'. The server designs the "
+         "workflows (case types), case lifecycles, data objects and personas. Use when the user has "
+         "chosen what to build, e.g. 'create an Access Request app for IT', 'generate a Claims Intake "
+         "blueprint for insurance'.")},
     {"name": "show_blueprint", "handler": show_blueprint, "ui": True,
      "description": (
          "Open the Pega Blueprint (workflow / application design) and render it inline. Optional "

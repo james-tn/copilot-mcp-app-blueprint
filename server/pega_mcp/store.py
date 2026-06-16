@@ -13,6 +13,7 @@ from . import data
 from .settings import get_settings
 
 _store: dict[str, dict[str, Any]] = {}
+_current_id: str | None = None
 
 _AUTOMATED_TYPES = {"automation", "ai-agent"}
 
@@ -26,13 +27,17 @@ def _public_base() -> str:
 
 
 def _ensure_seed() -> None:
+    global _current_id
     if not _store:
         bp = data.make_seed_blueprint()
         _store[bp["id"]] = bp
+        _current_id = bp["id"]
 
 
 def _first() -> dict[str, Any]:
     _ensure_seed()
+    if _current_id and _current_id in _store:
+        return _store[_current_id]
     return next(iter(_store.values()))
 
 
@@ -41,6 +46,17 @@ def get(blueprint_id: str | None = None) -> dict[str, Any]:
     if blueprint_id and blueprint_id in _store:
         return _store[blueprint_id]
     return _first()
+
+
+def create_blueprint(industry: str, sub_industry: str, purpose: str,
+                     description: str = "") -> dict[str, Any]:
+    """Generate, store, and make current a new blueprint from a wizard selection."""
+    global _current_id
+    _ensure_seed()
+    bp = data.generate_blueprint(industry, sub_industry, purpose, description)
+    _store[bp["id"]] = bp
+    _current_id = bp["id"]
+    return bp
 
 
 # ── Lifecycle helpers ────────────────────────────────────────────────────────
@@ -186,6 +202,11 @@ def _case_summary(c: dict[str, Any]) -> dict[str, Any]:
 
 
 # ── View payload builders ────────────────────────────────────────────────────
+
+def view_create() -> dict[str, Any]:
+    """The create-a-blueprint wizard payload (industry/sub-industry/purpose catalog)."""
+    return {"view": "create", "catalog": data.catalog()}
+
 
 def view_overview(blueprint_id: str | None = None) -> dict[str, Any]:
     bp = get(blueprint_id)

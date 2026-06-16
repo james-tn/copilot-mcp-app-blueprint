@@ -5,6 +5,10 @@
     "instructions": "$[file('instruction.txt')]",
     "conversation_starters": [
         {
+            "title": "Create a blueprint",
+            "text": "Create a new Pega Blueprint"
+        },
+        {
             "title": "Open my blueprint",
             "text": "Open my Pega Blueprint"
         },
@@ -19,10 +23,6 @@
         {
             "title": "Data & integrations",
             "text": "Show the data objects and integrations"
-        },
-        {
-            "title": "Summary",
-            "text": "Summarize the blueprint and how much faster it is"
         }
     ],
     "actions": [

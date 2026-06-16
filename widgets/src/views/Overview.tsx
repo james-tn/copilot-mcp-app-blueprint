@@ -1,6 +1,6 @@
 import React from "react";
 import { tokens, Text, Button, Badge } from "@fluentui/react-components";
-import { Open16Regular, Flowchart20Regular } from "@fluentui/react-icons";
+import { Open16Regular, Flowchart20Regular, Sparkle20Filled } from "@fluentui/react-icons";
 import { Card, StatTile, SectionTitle } from "../components/ui";
 import { PEGA_PURPLE } from "../theme";
 import type { OverviewData, Phase } from "../types";
@@ -9,10 +9,12 @@ export function Overview({
   data,
   navigate,
   onOpenWorkflow,
+  onCreate,
 }: {
   data: OverviewData;
   navigate: (p: Phase) => void;
   onOpenWorkflow: (caseId: string) => void;
+  onCreate?: () => void;
 }) {
   const c = data.context;
   return (
@@ -23,6 +25,22 @@ export function Overview({
         <StatTile value={data.counts.steps} label="Steps" />
         <StatTile value={data.counts.personas} label="Personas" />
       </div>
+
+      {onCreate && (
+        <Card style={{ borderColor: PEGA_PURPLE, background: `${PEGA_PURPLE}0d` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ minWidth: 0 }}>
+              <Text weight="bold" size={400} style={{ display: "block" }}>Start a new application</Text>
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                Pick an industry & purpose and let Blueprint design it.
+              </Text>
+            </div>
+            <Button appearance="primary" icon={<Sparkle20Filled />} onClick={onCreate}>
+              Create a Blueprint
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <Card>
         <SectionTitle>Application Context</SectionTitle>

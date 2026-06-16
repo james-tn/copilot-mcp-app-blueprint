@@ -136,6 +136,17 @@ export interface OverviewData extends Header {
   caseTypes: CaseSummary[];
   resumePhase: Phase;
 }
+export interface Catalog {
+  industries: string[];
+  subIndustries: Record<string, string[]>;
+  defaultSubIndustries: string[];
+  purposes: Record<string, string[]>;
+  defaultPurposes: string[];
+}
+export interface CreateData {
+  view: "create";
+  catalog: Catalog;
+}
 export interface ContextData extends Header { view: "context"; context: ContextBlock; }
 export interface WorkflowsData extends Header { view: "workflows"; caseTypes: CaseSummary[]; }
 export interface WorkflowDetailsData extends Header {
@@ -165,4 +176,4 @@ export interface ErrorData extends Header { view: "error"; message: string; }
 
 export type ToolData =
   | OverviewData | ContextData | WorkflowsData | WorkflowDetailsData
-  | DataViewData | PersonasData | SummaryData | ErrorData;
+  | DataViewData | PersonasData | SummaryData | CreateData | ErrorData;

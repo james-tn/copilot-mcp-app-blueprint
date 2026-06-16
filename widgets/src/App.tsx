@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ProgressBar, Text, tokens } from "@fluentui/react-components";
+import { ProgressBar, Text, Button, tokens } from "@fluentui/react-components";
 import { ErrorCircle24Regular } from "@fluentui/react-icons";
 import { useBridge } from "./mcp/McpBridge";
 import { Loading, Shell, TitleBar, Stepper, Card, TipBar, PromptChip } from "./components/ui";
@@ -10,6 +10,7 @@ import { WorkflowDetailsView } from "./views/WorkflowDetails";
 import { DataView } from "./views/Data";
 import { PersonasView } from "./views/Personas";
 import { SummaryView } from "./views/Summary";
+import { NewBlueprint, type CreateArgs } from "./views/NewBlueprint";
 import type { Phase, ToolData } from "./types";
 
 const PHASE_TITLES: Record<string, { title: string; subtitle: string }> = {
@@ -71,7 +72,33 @@ export function App() {
     run("show_workflow", { case: caseId });
   }, [run]);
 
+  const openCreate = useCallback(() => run("show_create"), [run]);
+
+  // Returns the promise so the wizard can keep its "designing…" overlay until the
+  // new blueprint is generated and the view swaps to the overview.
+  const generate = useCallback(
+    (args: CreateArgs) => {
+      setBusy(true);
+      return callTool("create_blueprint", args as unknown as Record<string, unknown>)
+        .then((sc) => {
+          if (sc && (sc as ToolData).view) setOverride(sc);
+        })
+        .finally(() => setBusy(false));
+    },
+    [callTool],
+  );
+
   if (!data) return <Loading connected={isConnected} />;
+
+  // The create wizard is a standalone surface (no phase stepper).
+  if (data.view === "create") {
+    return (
+      <Shell fullscreen={isFullscreen}>
+        {busy && <ProgressBar />}
+        <NewBlueprint data={data} onGenerate={generate} onCancel={() => run("show_blueprint")} />
+      </Shell>
+    );
+  }
 
   const meta = PHASE_TITLES[data.view] ?? PHASE_TITLES.overview;
   const canBack = data.view === "workflow-details";
@@ -86,7 +113,7 @@ export function App() {
       />
       {busy && <ProgressBar />}
 
-      {data.view === "overview" && <Overview data={data} navigate={navigatePhase} onOpenWorkflow={openWorkflow} />}
+      {data.view === "overview" && <Overview data={data} navigate={navigatePhase} onOpenWorkflow={openWorkflow} onCreate={openCreate} />}
       {data.view === "context" && <ContextView data={data} />}
       {data.view === "workflows" && <WorkflowsView data={data} onOpenWorkflow={openWorkflow} />}
       {data.view === "workflow-details" && <WorkflowDetailsView data={data} onSelectCase={openWorkflow} />}
@@ -103,6 +130,9 @@ export function App() {
       )}
 
       <TipBar>
+        <Button appearance="primary" size="small" shape="circular" onClick={openCreate}>
+          + Create a Blueprint
+        </Button>
         <PromptChip label="Workflows" prompt="Show the workflows" />
         <PromptChip label="Data model" prompt="Show the data objects and integrations" />
         <PromptChip label="Personas" prompt="Show the personas" />

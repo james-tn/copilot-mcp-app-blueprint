@@ -190,6 +190,22 @@ const sections = [
 
 const cloudCapabilities = ["Security", "Connectivity", "Laws & Regs", "Compliance", "Gov Cloud", "AI & Analytics", "Observability", "Disaster Recovery", "Channel", "DevOps"];
 
+const devCatalog = {
+  industries: ["Banking", "Communications", "Consumer Services", "Cross Industry (e.g. HR, IT, Finance, etc.)", "Energy & Utilities", "Government", "Healthcare", "Insurance", "Manufacturing", "Transportation & Logistics", "Just for fun", "Other"],
+  subIndustries: {
+    "Cross Industry (e.g. HR, IT, Finance, etc.)": ["Facilities", "Finance", "Human Resources", "Information Technology", "Procurement", "Other"],
+    "Banking": ["Retail Banking", "Asset Management", "Lending", "Payments", "Other"],
+    "Insurance": ["Claims", "Underwriting", "Policy Servicing", "Other"],
+  },
+  defaultSubIndustries: ["Operations", "Customer Service", "Other"],
+  purposes: {
+    "Human Resources": ["Employee Onboarding", "Employee Self-Service", "Performance Management", "Recruiting", "Training and Development"],
+    "Information Technology": ["Access Request", "Incident Management", "Service Request", "Change Management"],
+    "Claims": ["Claims Intake", "Claims Adjudication", "Fraud Investigation"],
+  },
+  defaultPurposes: ["Case Intake", "Service Request", "Approval Workflow", "Investigation"],
+};
+
 export const devOverview = {
   view: "overview", ...header("context"), context, caseTypes: caseSummaries, resumePhase: "workflow-details",
 } as unknown as ToolData;
@@ -197,6 +213,13 @@ export const devOverview = {
 export function devResolve(name: string, args?: Record<string, unknown>): ToolData {
   const phase = (args?.phase as string) || "";
   const caseArg = (args?.case as string) || "";
+  if (name === "show_create") return { view: "create", catalog: devCatalog } as unknown as ToolData;
+  if (name === "create_blueprint") {
+    const purpose = (args?.purpose as string) || "New Application";
+    const sub = (args?.sub_industry as string) || "Operations";
+    const ctx = { ...context, purpose, subIndustry: sub, description: `Generated ${purpose} application for a ${sub} team.` };
+    return { view: "overview", ...header("context"), subIndustry: sub, title: purpose, context: ctx, caseTypes: caseSummaries, resumePhase: "workflows" } as unknown as ToolData;
+  }
   if (name === "show_workflows") return { view: "workflows", ...header("workflows"), caseTypes: caseSummaries } as unknown as ToolData;
   if (name === "show_workflow") return workflowDetails(caseArg);
   if (name === "show_data") return { view: "data", ...header("data"), identity: "OpenID Connect (OIDC)", inboundEvents, dataObjects, integrations } as unknown as ToolData;

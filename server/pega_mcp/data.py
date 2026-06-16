@@ -317,6 +317,276 @@ def make_seed_blueprint() -> dict[str, Any]:
     }
 
 
+# ── "Create a Blueprint" catalog (industry → sub-industry → purpose) ──────────
+# Mirrors the choices Pega Blueprint offers in its create wizard. The widget uses
+# this to drive dependent pickers; ``create_blueprint`` generates from a selection.
+
+INDUSTRIES = [
+    "Banking", "Communications", "Consumer Services",
+    "Cross Industry (e.g. HR, IT, Finance, etc.)", "Energy & Utilities",
+    "Government", "Healthcare", "Insurance", "Manufacturing",
+    "Transportation & Logistics", "Just for fun", "Other",
+]
+
+SUB_INDUSTRIES: dict[str, list[str]] = {
+    "Cross Industry (e.g. HR, IT, Finance, etc.)": [
+        "Facilities", "Finance", "Human Resources", "Information Technology", "Procurement", "Other"],
+    "Banking": ["Retail Banking", "Asset Management", "Lending", "Payments", "Other"],
+    "Insurance": ["Claims", "Underwriting", "Policy Servicing", "Other"],
+    "Healthcare": ["Patient Services", "Claims & Billing", "Care Management", "Other"],
+    "Government": ["Citizen Services", "Permits & Licensing", "Benefits", "Other"],
+    "Communications": ["Customer Service", "Order Management", "Field Service", "Other"],
+    "Manufacturing": ["Order Management", "Quality", "Supply Chain", "Other"],
+    "Energy & Utilities": ["Customer Service", "Field Service", "Metering", "Other"],
+    "Consumer Services": ["Customer Service", "Order Management", "Other"],
+    "Transportation & Logistics": ["Shipment Management", "Fleet", "Customer Service", "Other"],
+}
+DEFAULT_SUB_INDUSTRIES = ["Operations", "Customer Service", "Other"]
+
+PURPOSES: dict[str, list[str]] = {
+    "Human Resources": ["Employee Onboarding", "Employee Self-Service", "Performance Management",
+                        "Recruiting", "Training and Development"],
+    "Information Technology": ["Access Request", "Incident Management", "Service Request", "Change Management"],
+    "Finance": ["Invoice Processing", "Expense Approval", "Vendor Onboarding", "Budget Request"],
+    "Procurement": ["Purchase Requisition", "Supplier Onboarding", "Contract Approval"],
+    "Facilities": ["Workspace Request", "Maintenance Request", "Move Management"],
+    "Claims": ["Claims Intake", "Claims Adjudication", "Fraud Investigation"],
+    "Underwriting": ["New Business Underwriting", "Risk Assessment", "Policy Issuance"],
+    "Lending": ["Loan Origination", "Credit Review", "Loan Servicing"],
+    "Retail Banking": ["Account Opening", "Dispute Resolution", "Card Servicing"],
+    "Citizen Services": ["Service Request", "Case Management", "Benefits Enrollment"],
+    "Permits & Licensing": ["License Application", "Permit Renewal", "Inspection Scheduling"],
+    "Patient Services": ["Patient Intake", "Appointment Scheduling", "Care Coordination"],
+    "Order Management": ["Order Fulfillment", "Returns Management", "Order Intake"],
+    "Customer Service": ["Case Management", "Complaint Handling", "Service Request"],
+}
+DEFAULT_PURPOSES = ["Case Intake", "Service Request", "Approval Workflow", "Investigation"]
+
+
+def catalog() -> dict[str, Any]:
+    """The full create-wizard catalog the widget renders."""
+    return {
+        "industries": INDUSTRIES,
+        "subIndustries": SUB_INDUSTRIES,
+        "defaultSubIndustries": DEFAULT_SUB_INDUSTRIES,
+        "purposes": PURPOSES,
+        "defaultPurposes": DEFAULT_PURPOSES,
+    }
+
+
+# ── Blueprint generator (the "AI" that designs an app from a prompt) ──────────
+
+_bp_counter = itertools.count(2027438)
+
+
+def _new_bp_id() -> str:
+    return f"BP-{next(_bp_counter)}"
+
+
+def _slug(s: str) -> str:
+    out = "-".join("".join(c for c in w if c.isalnum()) for w in s.lower().split())
+    return out.strip("-") or "case"
+
+
+def _primary_entity(purpose: str) -> str:
+    stop = {"management", "processing", "request", "requests", "approval",
+            "services", "service", "and", "intake"}
+    words = [w for w in purpose.split() if w.lower() not in stop]
+    return (words[0] if words else purpose.split()[0]).capitalize()
+
+
+_PERSONAS_BY_SUB: dict[str, list[tuple[str, str]]] = {
+    "Finance": [
+        ("Requester", "Submits financial requests and supporting documentation, and tracks them to approval."),
+        ("Finance Analyst", "Reviews submissions, validates figures and policy compliance, and processes transactions."),
+        ("Approver", "Approves or rejects requests within delegated authority and handles escalations."),
+        ("Controller", "Owns financial controls, audit readiness and exception oversight."),
+    ],
+    "Information Technology": [
+        ("Requester", "Raises IT requests and incidents and tracks them to resolution."),
+        ("IT Specialist", "Triages, fulfils and resolves requests, provisioning access and assets."),
+        ("IT Manager", "Approves higher-risk changes and access, and oversees SLAs."),
+        ("Security Reviewer", "Reviews access and changes for security and compliance."),
+    ],
+    "Procurement": [
+        ("Requester", "Raises purchase requests and tracks them through approval and ordering."),
+        ("Buyer", "Sources suppliers, negotiates and places orders."),
+        ("Category Manager", "Approves spend, manages supplier relationships and contracts."),
+        ("Supplier", "Receives orders and provides goods, services and documentation."),
+    ],
+    "Facilities": [
+        ("Requester", "Submits workspace and facility requests and tracks fulfilment."),
+        ("Facilities Coordinator", "Plans and executes workspace, desk and facility tasks."),
+        ("Facilities Manager", "Approves requests and oversees resourcing and scheduling."),
+    ],
+    "Claims": [
+        ("Claimant", "Submits a claim and supporting evidence and tracks its progress."),
+        ("Claims Handler", "Assesses claims, gathers information and determines outcomes."),
+        ("Claims Manager", "Approves settlements, handles exceptions and oversees SLAs."),
+        ("Fraud Investigator", "Investigates suspicious claims and escalates findings."),
+    ],
+    "Patient Services": [
+        ("Patient", "Provides information and engages with care and scheduling tasks."),
+        ("Intake Coordinator", "Captures patient details and routes work to care teams."),
+        ("Care Coordinator", "Coordinates appointments, care plans and follow-ups."),
+        ("Clinician", "Reviews clinical information and approves care decisions."),
+    ],
+}
+_DEFAULT_PERSONAS: list[tuple[str, str]] = [
+    ("Requester", "Initiates and submits requests, provides required information, and tracks progress to completion."),
+    ("Case Specialist", "Owns day-to-day case work — gathers information, performs assessments, and moves work through the lifecycle."),
+    ("Manager", "Reviews and approves key decisions, handles exceptions, and oversees team workload and SLAs."),
+    ("Reviewer", "Performs quality and compliance checks before work is finalized."),
+    ("Administrator", "Configures the application, manages reference data, and supports users."),
+]
+
+
+def _gen_personas(sub_industry: str) -> list[dict[str, Any]]:
+    rows = _PERSONAS_BY_SUB.get(sub_industry, _DEFAULT_PERSONAS)
+    return [{"id": _slug(name), "name": name, "imageUrl": img(_slug(name)), "description": desc}
+            for name, desc in rows]
+
+
+def _gen_data_objects(purpose: str) -> list[dict[str, Any]]:
+    entity = _primary_entity(purpose)
+    names = [entity, "Case", "Party", "Document", "Task", "Notification"]
+    seen: list[str] = []
+    for n in names:
+        if n not in seen:
+            seen.append(n)
+    return [{"id": _slug(n), "name": n, "sor": "local", "systemOfRecord": "Pega (Local)"} for n in seen]
+
+
+def _gen_integrations(industry: str) -> list[dict[str, Any]]:
+    return [
+        {"id": "entra-id", "name": "Microsoft Entra ID", "purpose": "Identity, accounts and access provisioning"},
+        {"id": "system-of-record", "name": "System of Record", "purpose": f"Core {industry} data integration"},
+        {"id": "notification-gateway", "name": "Email/SMS Gateway", "purpose": "Outbound notifications to participants"},
+    ]
+
+
+def _primary_case(purpose: str) -> dict[str, Any]:
+    return {
+        "id": _slug(purpose), "name": purpose, "primary": True,
+        "description": (
+            f"End-to-end {purpose} workflow that coordinates intake, assessment, processing, review "
+            f"and completion — with the right approvals, data and notifications at each step."
+        ),
+        "stages": [
+            _stage("Intake", "primary", steps=[
+                _step("Receive Request", "collect"),
+                _step("Validate Details", "automation"),
+                _step("Confirm Eligibility", "decision"),
+            ]),
+            _stage("Assessment", "primary", steps=[
+                _step("Gather Information", "collect"),
+                _step("Analyze Requirements", "automation"),
+                _step("Policy Check", "decision"),
+            ]),
+            _stage("Processing", "primary", processes=[
+                _process("Execution", [
+                    _step(f"Perform {purpose} Tasks", "automation"),
+                    _step("Coordinate Stakeholders", "collect"),
+                    _step("Update Records", "automation"),
+                ]),
+            ]),
+            _stage("Review & Approval", "primary", steps=[
+                _step("Quality Review", "collect"),
+                _step("Manager Approval", "approve"),
+                _step("Generate Summary", "document"),
+            ]),
+            _stage("Completion", "primary", steps=[
+                _step("Notify Outcome", "notification"),
+                _step("Archive Records", "automation"),
+                _step("Send Survey", "notification"),
+            ]),
+            _stage("Rework", "alternate", steps=[
+                _step("Identify Gaps", "automation"),
+                _step("Request Updates", "collect"),
+                _step("Resubmit", "notification"),
+            ]),
+            _stage("Exception Handling", "alternate", steps=[
+                _step("Flag Exception", "decision"),
+                _step("Summarize with AI", "ai-agent"),
+                _step("Manager Decision", "approve"),
+                _step("Notify Outcome", "notification"),
+            ]),
+        ],
+    }
+
+
+def _support_case(name: str, purpose: str) -> dict[str, Any]:
+    return {
+        "id": _slug(name), "name": name, "primary": False,
+        "description": f"Supporting workflow that handles {name.lower()} as part of {purpose}.",
+        "stages": [
+            _stage("Request", "primary", steps=[
+                _step("Capture Request", "collect"),
+                _step("Validate", "automation"),
+                _step("Approve", "approve"),
+            ]),
+            _stage("Fulfilment", "primary", steps=[
+                _step("Execute Task", "automation"),
+                _step("Verify Completion", "collect"),
+                _step("Confirm", "notification"),
+            ]),
+            _stage("Exception", "alternate", steps=[
+                _step("Flag Issue", "decision"),
+                _step("Resolve", "collect"),
+                _step("Notify Outcome", "notification"),
+            ]),
+        ],
+    }
+
+
+def generate_blueprint(industry: str, sub_industry: str, purpose: str,
+                       description: str = "") -> dict[str, Any]:
+    """Generate a new blueprint from a create-wizard selection.
+
+    The curated "Employee Onboarding" seed is returned (with a fresh id) when that
+    exact purpose is chosen, so re-creating the showcase looks rich; any other
+    selection produces a structurally faithful generated application.
+    """
+    industry = (industry or "Cross Industry (e.g. HR, IT, Finance, etc.)").strip()
+    sub_industry = (sub_industry or "Operations").strip()
+    purpose = (purpose or "Case Intake").strip()
+
+    if sub_industry == "Human Resources" and purpose == "Employee Onboarding":
+        bp = make_seed_blueprint()
+        bp["id"] = _new_bp_id()
+        if description:
+            bp["description"] = description
+        return bp
+
+    desc = description or (
+        f"Manage {purpose.lower()} for a {sub_industry} team in the {industry.split(' (')[0]} "
+        f"industry — coordinating intake, processing, review and completion with the right "
+        f"approvals, data objects and notifications."
+    )
+    case_types = [
+        _primary_case(purpose),
+        _support_case("Document Verification", purpose),
+        _support_case("Approval Management", purpose),
+    ]
+    return {
+        "id": _new_bp_id(),
+        "title": purpose,
+        "industry": industry.split(" (")[0],
+        "subIndustry": sub_industry,
+        "purpose": purpose,
+        "description": desc,
+        "orgName": "Microsoft",
+        "location": "United States",
+        "language": "English",
+        "caseTypes": case_types,
+        "personas": _gen_personas(sub_industry),
+        "dataObjects": _gen_data_objects(purpose),
+        "integrations": _gen_integrations(industry.split(" (")[0]),
+        "inboundEvents": _seed_inbound_events(),
+        "identity": "OpenID Connect (OIDC)",
+    }
+
+
 # Re-exported so the store can lazily (re)seed generated sections.
 seed_case_types = _seed_case_types
 seed_personas = _seed_personas

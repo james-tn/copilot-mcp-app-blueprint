@@ -45,6 +45,11 @@ async def main() -> None:
 
             ov = await call("show_blueprint")
             assert ov.get("view") == "overview", ov
+            cr = await call("show_create")
+            assert cr.get("view") == "create" and cr.get("catalog"), cr
+            new = await call("create_blueprint", industry="Insurance", sub_industry="Claims", purpose="Claims Intake")
+            assert new.get("view") == "overview", new
+            assert any(c["name"] == "Claims Intake" for c in new["caseTypes"]), new
             wf = await call("show_workflows")
             assert wf.get("caseTypes"), wf
             first_case = wf["caseTypes"][0]["id"]
@@ -53,7 +58,7 @@ async def main() -> None:
             assert det["case"]["stages"], det
             await call("show_data")
             personas = await call("show_personas")
-            assert len(personas.get("personas", [])) == 6
+            assert personas.get("personas"), personas
             await call("show_summary")
             data = await call("get_blueprint_summary")
             assert data.get("view") == "summary-data", data
