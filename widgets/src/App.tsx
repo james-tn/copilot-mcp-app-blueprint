@@ -4,21 +4,21 @@ import { ErrorCircle24Regular } from "@fluentui/react-icons";
 import { useBridge } from "./mcp/McpBridge";
 import { Loading, Shell, TitleBar, Stepper, Card, TipBar, PromptChip } from "./components/ui";
 import { Overview } from "./views/Overview";
-import { ContextView, SetupView, PersonasView } from "./views/Phases";
-import { BrandView } from "./views/Brand";
-import { ExperiencesView } from "./views/Experiences";
-import { ActionView } from "./views/Action";
+import { ContextView } from "./views/Context";
+import { WorkflowsView } from "./views/Workflows";
+import { WorkflowDetailsView } from "./views/WorkflowDetails";
+import { DataView } from "./views/Data";
+import { PersonasView } from "./views/Personas";
 import { SummaryView } from "./views/Summary";
 import type { Phase, ToolData } from "./types";
 
 const PHASE_TITLES: Record<string, { title: string; subtitle: string }> = {
-  overview: { title: "Customer Engagement Blueprint", subtitle: "Overview" },
-  context: { title: "Let's review your context", subtitle: "Step 1 · Context" },
-  setup: { title: "Let's set the focus", subtitle: "Step 2 · Setup" },
-  personas: { title: "Your customer personas", subtitle: "Step 3 · Personas" },
-  brand: { title: "Validate your brand voice", subtitle: "Step 4 · Brand" },
-  experiences: { title: "Review your experiences", subtitle: "Step 5 · Experiences" },
-  action: { title: "Action treatments", subtitle: "Step 5 · Experiences" },
+  overview: { title: "Pega Blueprint", subtitle: "Overview" },
+  context: { title: "Application Context", subtitle: "Step 1 · Context" },
+  workflows: { title: "Workflows", subtitle: "Step 2 · Case Types" },
+  "workflow-details": { title: "Workflow Details", subtitle: "Step 3 · Case Lifecycle" },
+  data: { title: "Data & Integrations", subtitle: "Step 4 · Data" },
+  personas: { title: "Personas", subtitle: "Step 5 · Personas" },
   summary: { title: "Summary", subtitle: "Step 6 · Summary" },
 };
 
@@ -26,10 +26,10 @@ const PHASE_TITLES: Record<string, { title: string; subtitle: string }> = {
 function phaseTool(phase: Phase): { name: string; args?: Record<string, unknown> } {
   switch (phase) {
     case "context": return { name: "show_blueprint", args: { phase: "context" } };
-    case "setup": return { name: "show_blueprint", args: { phase: "setup" } };
+    case "workflows": return { name: "show_workflows" };
+    case "workflow-details": return { name: "show_workflow" };
+    case "data": return { name: "show_data" };
     case "personas": return { name: "show_personas" };
-    case "brand": return { name: "show_brand" };
-    case "experiences": return { name: "show_experiences" };
     case "summary": return { name: "show_summary" };
     default: return { name: "show_blueprint" };
   }
@@ -67,32 +67,31 @@ export function App() {
     run(name, args);
   }, [run]);
 
-  const openAction = useCallback((actionId: string) => {
-    run("show_action", { action: actionId });
+  const openWorkflow = useCallback((caseId: string) => {
+    run("show_workflow", { case: caseId });
   }, [run]);
 
   if (!data) return <Loading connected={isConnected} />;
 
   const meta = PHASE_TITLES[data.view] ?? PHASE_TITLES.overview;
-  const canBack = !!override && data.view === "action";
+  const canBack = data.view === "workflow-details";
 
   return (
     <Shell fullscreen={isFullscreen}>
       <Stepper phases={data.phases} active={data.phase} onNavigate={navigatePhase} />
       <TitleBar
         title={meta.title}
-        subtitle={`${meta.subtitle} · ${data.industry} · ${data.blueprintId}`}
-        onBack={canBack ? () => run("show_experiences") : undefined}
+        subtitle={`${meta.subtitle} · ${data.subIndustry} · ${data.blueprintId}`}
+        onBack={canBack ? () => run("show_workflows") : undefined}
       />
       {busy && <ProgressBar />}
 
-      {data.view === "overview" && <Overview data={data} navigate={navigatePhase} />}
+      {data.view === "overview" && <Overview data={data} navigate={navigatePhase} onOpenWorkflow={openWorkflow} />}
       {data.view === "context" && <ContextView data={data} />}
-      {data.view === "setup" && <SetupView data={data} />}
+      {data.view === "workflows" && <WorkflowsView data={data} onOpenWorkflow={openWorkflow} />}
+      {data.view === "workflow-details" && <WorkflowDetailsView data={data} onSelectCase={openWorkflow} />}
+      {data.view === "data" && <DataView data={data} />}
       {data.view === "personas" && <PersonasView data={data} />}
-      {data.view === "brand" && <BrandView data={data} />}
-      {data.view === "experiences" && <ExperiencesView data={data} onOpenAction={openAction} />}
-      {data.view === "action" && <ActionView data={data} />}
       {data.view === "summary" && <SummaryView data={data} navigate={navigatePhase} />}
       {data.view === "error" && (
         <Card>
@@ -104,9 +103,10 @@ export function App() {
       )}
 
       <TipBar>
+        <PromptChip label="Workflows" prompt="Show the workflows" />
+        <PromptChip label="Data model" prompt="Show the data objects and integrations" />
         <PromptChip label="Personas" prompt="Show the personas" />
-        <PromptChip label="Experiences" prompt="Show the experiences" />
-        <PromptChip label="Summary" prompt="Show the summary" />
+        <PromptChip label="Summary" prompt="Summarize the blueprint" />
       </TipBar>
     </Shell>
   );

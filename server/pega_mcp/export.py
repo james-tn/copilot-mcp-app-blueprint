@@ -1,8 +1,8 @@
 """Blueprint export generators: importable Blueprint JSON, PDF and Excel.
 
 * ``build_blueprint_json`` — the "Download Blueprint" artifact: a structured,
-  versioned JSON document of the whole blueprint (the analog of Pega's importable
-  blueprint export).
+  versioned JSON document of the whole application design (the analog of Pega's
+  importable blueprint export).
 * ``build_pdf`` — a human-readable PDF (pure-Python writer, no compiled deps).
 * ``build_xlsx`` — a multi-sheet workbook (openpyxl).
 """
@@ -15,7 +15,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from . import store
+from . import data, store
 
 
 def safe_filename(s: str) -> str:
@@ -23,49 +23,42 @@ def safe_filename(s: str) -> str:
     return (s or "blueprint")[:80]
 
 
+def _type_label(t: str) -> str:
+    return data.STEP_TYPES.get(t, t)
+
+
 # ── Download Blueprint (importable JSON artifact) ────────────────────────────
 
 def build_blueprint_json(bp: dict[str, Any]) -> bytes:
-    counts = store.summary_counts(bp)
+    counts = store.blueprint_counts(bp)
     doc = {
-        "$schema": "https://pega.example/customer-engagement-blueprint/v1.json",
-        "kind": "CustomerEngagementBlueprint",
+        "$schema": "https://pega.example/blueprint/v1.json",
+        "kind": "PegaBlueprint",
         "version": "1.0",
         "exportedAt": datetime.now(timezone.utc).isoformat(),
         "id": bp["id"],
         "title": bp["title"],
-        "industry": bp["industry"],
         "context": {
             "organization": bp["orgName"],
-            "website": bp["website"],
-            "objective": bp["objective"],
-            "objectiveDetails": bp["objectiveDetails"],
+            "industry": bp["industry"],
+            "subIndustry": bp["subIndustry"],
+            "purpose": bp["purpose"],
+            "description": bp["description"],
             "language": bp["language"],
             "location": bp["location"],
         },
-        "setup": {
-            "products": bp["products"],
-            "outcomes": bp["outcomes"],
-            "channels": bp["channels"],
-            "features": bp["features"],
-        },
+        "workflows": bp["caseTypes"],
         "personas": bp["personas"],
-        "brand": {
-            "voice": bp["voice"],
-            "visualIdentity": {
-                "logoUrl": bp.get("logoUrl"),
-                "headerColor": bp["headerColor"],
-                "backgroundColor": bp["backgroundColor"],
-                "footerColor": bp["footerColor"],
-            },
+        "dataModel": {
+            "identity": bp["identity"],
+            "inboundEvents": bp["inboundEvents"],
+            "dataObjects": bp["dataObjects"],
+            "integrations": bp["integrations"],
         },
-        "actions": bp["actions"],
-        "summary": counts,
+        "architecture": counts,
     }
     return json.dumps(doc, indent=2).encode("utf-8")
 
-
-# ── PDF ──────────────────────────────────────────────────────────────────────
 
 # ── PDF (pure-Python, zero compiled dependencies) ───────────────────────────
 #
@@ -102,7 +95,6 @@ def _wrap(text: str, size: float, max_w: float) -> list[str]:
             else:
                 if line:
                     out.append(line)
-                # Hard-break very long words.
                 while len(w) > max_chars:
                     out.append(w[:max_chars])
                     w = w[max_chars:]
@@ -115,12 +107,10 @@ def build_pdf(bp: dict[str, Any]) -> bytes:
     # Page geometry (A4, points).
     PW, PH, MARGIN = 595.0, 842.0, 50.0
     usable_w = PW - 2 * MARGIN
-    accent = "0.949 0.314 0.133"  # #f25022
+    accent = "0.353 0.122 0.667"  # #5a1faa-ish Pega indigo/purple
     black = "0 0 0"
     grey = "0.43 0.43 0.43"
 
-    # Build a flat list of styled lines, then paginate.
-    # Each item: (text, font 'H'|'B', size, color, gap_before)
     items: list[tuple[str, str, float, str, float]] = []
 
     def add(text: str, font: str = "H", size: float = 11, color: str = black, gap: float = 0.0) -> None:
@@ -131,45 +121,48 @@ def build_pdf(bp: dict[str, Any]) -> bytes:
     def h1(t: str) -> None:
         add(t, "B", 15, accent, gap=10)
 
-    c = store.summary_counts(bp)
-    add("Customer Engagement Blueprint", "B", 22, accent)
+    c = store.blueprint_counts(bp)
+    add("Pega Blueprint", "B", 22, accent)
     add(bp["title"], "H", 13)
-    add(f"{bp['industry']} - {bp['id']}", "H", 9, grey)
+    add(f"{bp['subIndustry']} - {bp['industry']} - {bp['id']}", "H", 9, grey)
 
-    h1("Overview")
-    add(f"Organization: {bp['orgName']}   |   Website: {bp['website']}")
-    add(f"Objective: {bp['objective']}")
-    add(f"Language: {bp['language']}   |   Location: {bp['location']}")
-    add(f"Outcomes: {', '.join(bp['outcomes']) or '-'}   |   Channels: {', '.join(bp['channels']) or '-'}")
-    add(f"Actions: {c['actions']}   |   Messages: {c['treatments']}   |   Channels used: {c['channels']}")
+    h1("Application Context")
+    add(f"Organization: {bp['orgName']}   |   Location: {bp['location']}   |   Language: {bp['language']}")
+    add(f"Industry: {bp['industry']} / {bp['subIndustry']}   |   Purpose: {bp['purpose']}")
+    add(bp["description"])
+    add(
+        f"Architecture: {c['caseTypes']} workflows, {c['stages']} stages, {c['steps']} steps "
+        f"({c['automations']} automated), {c['dataObjects']} data objects, {c['personas']} personas."
+    )
 
-    h1("Objective details")
-    add(bp["objectiveDetails"])
+    h1("Workflows (Case Types)")
+    for case in bp["caseTypes"]:
+        tag = " [primary]" if case.get("primary") else ""
+        add(f"{case['name']}{tag}", "B", 13, black, gap=8)
+        add(case["description"], "H", 10)
+        for stage in case["stages"]:
+            add(f"  {stage['name']}  ({stage['kind']} stage)", "B", 11, accent, gap=4)
+            for proc in stage.get("processes") or []:
+                add(f"    Process: {proc['name']}", "B", 10, grey, gap=2)
+                for s in proc["steps"]:
+                    add(f"      - {s['name']}  [{_type_label(s['type'])}]", "H", 10)
+            for s in stage.get("steps") or []:
+                add(f"    - {s['name']}  [{_type_label(s['type'])}]", "H", 10)
+
+    h1("Data & Integrations")
+    add(f"User identity: {bp['identity']}")
+    enabled = [e["name"] for e in bp["inboundEvents"] if e["enabled"]]
+    add(f"Inbound events: {', '.join(enabled) or '-'}")
+    add("Data objects: " + ", ".join(f"{o['name']} ({o['systemOfRecord']})" for o in bp["dataObjects"]))
+    if bp["integrations"]:
+        add("Integrations:", "B", 11, black, gap=4)
+        for it in bp["integrations"]:
+            add(f"  - {it['name']}: {it['purpose']}", "H", 10)
 
     h1("Personas")
     for p in bp["personas"]:
         add(p["name"], "B", 12, black, gap=4)
-        meta = " - ".join(x for x in [p.get("gender"), p.get("ageBand")] if x)
-        if meta:
-            add(meta, "H", 9, grey)
         add(p["description"], "H", 10)
-
-    h1("Brand voice")
-    for v in bp["voice"]:
-        if v["enabled"]:
-            add(f"* {v['name']}", "B", 11, black, gap=3)
-            add(f"   {v['description']}", "H", 10, grey)
-
-    h1("Experiences (Actions & Treatments)")
-    for a in bp["actions"]:
-        add(a["name"], "B", 12, black, gap=6)
-        add(f"{a['product']} - {a['objective']}", "H", 9, grey)
-        add(a["description"], "H", 10)
-        for t in a["treatments"]:
-            add(f"   {t['name']}  [{t['channel']}]", "B", 10, black, gap=3)
-            add(f"   Headline: {t['headline']}", "H", 10)
-            add(f"   Message: {t['body']}", "H", 10)
-            add(f"   CTA: {t['cta']}   |   Principle: {t.get('marketingPrinciple', '-')}", "H", 10)
 
     # Paginate into content streams.
     pages: list[str] = []
@@ -250,7 +243,7 @@ def build_xlsx(bp: dict[str, Any]) -> bytes:
 
     wb = Workbook()
     bold = Font(bold=True)
-    c = store.summary_counts(bp)
+    c = store.blueprint_counts(bp)
 
     ov = wb.active
     ov.title = "Overview"
@@ -259,45 +252,55 @@ def build_xlsx(bp: dict[str, Any]) -> bytes:
     ov["B1"].font = bold
     for k, v in [
         ("Title", bp["title"]), ("Blueprint ID", bp["id"]), ("Industry", bp["industry"]),
-        ("Organization", bp["orgName"]), ("Website", bp["website"]), ("Objective", bp["objective"]),
-        ("Objective details", bp["objectiveDetails"]), ("Language", bp["language"]),
-        ("Location", bp["location"]), ("Products", ", ".join(bp["products"])),
-        ("Outcomes", ", ".join(bp["outcomes"])), ("Channels", ", ".join(bp["channels"])),
-        ("Features", ", ".join(bp["features"])), ("# Actions", c["actions"]),
-        ("# Messages", c["treatments"]), ("# Channels used", c["channels"]),
+        ("Sub-industry", bp["subIndustry"]), ("Purpose", bp["purpose"]),
+        ("Organization", bp["orgName"]), ("Location", bp["location"]), ("Language", bp["language"]),
+        ("Description", bp["description"]), ("Identity", bp["identity"]),
+        ("# Workflows", c["caseTypes"]), ("# Stages", c["stages"]), ("# Steps", c["steps"]),
+        ("# Automations", c["automations"]), ("# Data objects", c["dataObjects"]),
+        ("# Personas", c["personas"]), ("# Integrations", c["integrations"]),
     ]:
         ov.append([k, v])
     ov.column_dimensions["A"].width = 22
-    ov.column_dimensions["B"].width = 90
+    ov.column_dimensions["B"].width = 95
+
+    wf = wb.create_sheet("Workflows")
+    wf.append(["Workflow", "Stage", "Stage kind", "Process", "Step", "Step type"])
+    for cell in wf[1]:
+        cell.font = bold
+    for case in bp["caseTypes"]:
+        for stage in case["stages"]:
+            for proc in stage.get("processes") or []:
+                for s in proc["steps"]:
+                    wf.append([case["name"], stage["name"], stage["kind"], proc["name"],
+                               s["name"], _type_label(s["type"])])
+            for s in stage.get("steps") or []:
+                wf.append([case["name"], stage["name"], stage["kind"], "",
+                           s["name"], _type_label(s["type"])])
+    for col, w in zip("ABCDEF", (26, 22, 12, 18, 30, 20)):
+        wf.column_dimensions[col].width = w
 
     ps = wb.create_sheet("Personas")
-    ps.append(["Name", "Gender", "Age band", "Description"])
+    ps.append(["Name", "Description"])
     for cell in ps[1]:
         cell.font = bold
     for p in bp["personas"]:
-        ps.append([p["name"], p.get("gender", ""), p.get("ageBand", ""), p["description"]])
-    for col, w in zip("ABCD", (24, 14, 18, 100)):
+        ps.append([p["name"], p["description"]])
+    for col, w in zip("AB", (26, 110)):
         ps.column_dimensions[col].width = w
 
-    bv = wb.create_sheet("Brand Voice")
-    bv.append(["Characteristic", "Enabled", "Description"])
-    for cell in bv[1]:
+    dm = wb.create_sheet("Data & Integrations")
+    dm.append(["Type", "Name", "Detail"])
+    for cell in dm[1]:
         cell.font = bold
-    for v in bp["voice"]:
-        bv.append([v["name"], "Yes" if v["enabled"] else "No", v["description"]])
-    for col, w in zip("ABC", (28, 12, 90)):
-        bv.column_dimensions[col].width = w
-
-    ex = wb.create_sheet("Experiences")
-    ex.append(["Action", "Product", "Objective", "Treatment", "Channel", "Headline", "Message", "CTA", "Marketing principle"])
-    for cell in ex[1]:
-        cell.font = bold
-    for a in bp["actions"]:
-        for t in a["treatments"]:
-            ex.append([a["name"], a["product"], a["objective"], t["name"], t["channel"],
-                       t["headline"], t["body"], t["cta"], t.get("marketingPrinciple", "")])
-    for col, w in zip("ABCDEFGHI", (30, 18, 14, 26, 12, 30, 55, 20, 20)):
-        ex.column_dimensions[col].width = w
+    dm.append(["Identity", bp["identity"], ""])
+    for e in bp["inboundEvents"]:
+        dm.append(["Inbound event", e["name"], "Enabled" if e["enabled"] else "Available"])
+    for o in bp["dataObjects"]:
+        dm.append(["Data object", o["name"], o["systemOfRecord"]])
+    for it in bp["integrations"]:
+        dm.append(["Integration", it["name"], it["purpose"]])
+    for col, w in zip("ABC", (16, 30, 60)):
+        dm.column_dimensions[col].width = w
 
     buf = io.BytesIO()
     wb.save(buf)

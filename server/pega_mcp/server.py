@@ -1,4 +1,4 @@
-"""MCP Apps server bootstrap for the Pega Customer Engagement Blueprint.
+"""MCP Apps server bootstrap for Pega Blueprint.
 
 Exposes a single UI resource (the blueprint widget) plus a set of tools that
 return ``structuredContent`` the widget renders. Tools are linked to the widget
@@ -73,7 +73,7 @@ async def _list_resource_templates() -> list[types.ResourceTemplate]:
         types.ResourceTemplate(
             uriTemplate=WIDGET_URI,
             name="Pega Blueprint widget",
-            description="Inline UI for the Customer Engagement Blueprint.",
+            description="Inline UI for Pega Blueprint application design.",
             mimeType="text/html;profile=mcp-app",
             _meta={"ui": {"resourceUri": WIDGET_URI}},
         )

@@ -15,7 +15,7 @@ flowchart TB
     subgraph Server[MCP server — Azure Container Apps]
       AM[Bearer auth middleware]
       F[FastMCP app]
-      T[Tools: show_blueprint, show_personas, …]
+      T[Tools: show_blueprint, show_workflows, show_workflow, …]
       R[UI resource: ui://pega-blueprint/app.html]
       X[Export routes: /export/:id/:fmt, /healthz]
     end
@@ -84,15 +84,15 @@ sequenceDiagram
     C->>S: read resource ui://…/app.html
     S-->>C: widget HTML
     C->>W: render inline + hand structuredContent
-    U->>W: click an Action
-    W->>S: callTool show_action {action}
-    S-->>W: structuredContent (treatments)
+    U->>W: open a workflow
+    W->>S: callTool show_workflow {case}
+    S-->>W: structuredContent (case lifecycle)
     W-->>U: drill-down view
 ```
 
 The widget routes on a `view` discriminator inside `structuredContent`, so a single
-HTML bundle renders every phase (overview, personas, brand, experiences, action,
-summary).
+HTML bundle renders every step (overview, context, workflows, workflow-details,
+data, personas, summary).
 
 ## Server internals
 
@@ -113,6 +113,6 @@ summary).
 | **Single-file widget** | One `ui://` resource to serve; no asset hosting or CSP juggling. |
 | **Container Apps, `min-replicas=1`** | No scale-to-zero cold starts — Copilot's MCP calls time out during a cold start. |
 | **Pure-ASGI auth middleware** | Keeps MCP's streaming (SSE) responses intact. |
-| **`view` discriminator** | One widget bundle handles all phases; tools just pick a view. |
+| **`view` discriminator** | One widget bundle handles all steps; tools just pick a view. |
 
 See [security-and-login.md](security-and-login.md) for the auth design.

@@ -1,23 +1,29 @@
 import React from "react";
-import { tokens, Text, Button } from "@fluentui/react-components";
+import { tokens, Text, Button, Badge } from "@fluentui/react-components";
 import {
   DocumentPdf20Regular,
   DocumentTable20Regular,
   ArrowDownload20Regular,
   Share20Regular,
+  Open20Regular,
   Edit16Regular,
 } from "@fluentui/react-icons";
-import { Card, StatTile, SectionTitle, Pill } from "../components/ui";
+import { Card, StatTile, SectionTitle } from "../components/ui";
 import { useBridge } from "../mcp/McpBridge";
-import { outcomeColor, channelColor } from "../theme";
-import { money } from "../format";
+import { PEGA_PURPLE } from "../theme";
 import type { SummaryData, Phase } from "../types";
 
-// Illustrative value model (matches the server's calculate_value): adoption 12%,
-// $18 average annual ARPU uplift per adopting customer. Computed client-side so
-// the calculator responds instantly.
-function estimate(numCustomers: number): number {
-  return Math.round(numCustomers * 0.12 * 18);
+const SCOPE_MULT: Record<string, number> = { Pilot: 0.6, Department: 1.0, Enterprise: 1.8 };
+
+// Illustrative delivery-acceleration model (matches store.calculate_acceleration),
+// computed client-side so the scope buttons respond instantly.
+function estimate(steps: number, scope: string) {
+  const m = SCOPE_MULT[scope] ?? 1.0;
+  const traditionalWeeks = Math.max(1, Math.round(steps * 0.6 * m));
+  const traditionalMonths = Math.round((traditionalWeeks / 4) * 10) / 10;
+  const blueprintDays = Math.max(3, Math.round(steps * 0.4 * m));
+  const fasterX = Math.max(2, Math.round((traditionalWeeks * 5) / blueprintDays));
+  return { traditionalMonths, blueprintDays, fasterX };
 }
 
 export function SummaryView({
@@ -28,17 +34,17 @@ export function SummaryView({
   navigate: (p: Phase) => void;
 }) {
   const { sendPrompt, downloadFile } = useBridge();
+  const a = data.architecture;
   const c = data.context;
-  const s = data.setup;
-  const [n, setN] = React.useState(data.value.numCustomers);
+  const [scope, setScope] = React.useState(data.value.scope || "Department");
   const [note, setNote] = React.useState<string | null>(null);
+  const est = estimate(a.steps, scope);
 
   const fileBase = data.title.replace(/[^a-z0-9]+/gi, "_").slice(0, 60) || "blueprint";
   const download = async (url: string, label: string, ext: string, mime: string) => {
     setNote(null);
     const ok = await downloadFile(url, `${fileBase}.${ext}`, mime);
     if (!ok) {
-      // Host blocked it — surface the link in chat so the user can still grab it.
       sendPrompt(`Here is the ${label} download link for my blueprint: ${url}`);
       setNote(`If the download didn't start, I've sent the ${label} link to the chat.`);
     }
@@ -46,10 +52,13 @@ export function SummaryView({
 
   return (
     <>
-      <div style={{ display: "flex", gap: 10 }}>
-        <StatTile value={data.counts.actions} label="Actions" />
-        <StatTile value={data.counts.treatments} label="Messages" />
-        <StatTile value={data.counts.channels} label="Channels" />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <StatTile value={a.caseTypes} label="Workflows" />
+        <StatTile value={a.stages} label="Stages" />
+        <StatTile value={a.steps} label="Steps" />
+        <StatTile value={a.dataObjects} label="Data objects" />
+        <StatTile value={a.personas} label="Personas" />
+        <StatTile value={a.integrations} label="Integrations" />
       </div>
 
       {/* Export / share — mirrors Pega's Summary actions. */}
@@ -68,6 +77,9 @@ export function SummaryView({
           <Button appearance="outline" icon={<ArrowDownload20Regular />} onClick={() => download(data.exports.blueprint, "Blueprint", "blueprint.json", "application/json")}>
             Download Blueprint
           </Button>
+          <Button appearance="subtle" icon={<Open20Regular />} onClick={() => sendPrompt("Show me what this app would look like live")}>
+            See it live
+          </Button>
           <Button appearance="subtle" icon={<Share20Regular />} onClick={() => sendPrompt("Share this blueprint with my team")}>
             Share
           </Button>
@@ -78,11 +90,11 @@ export function SummaryView({
           </Text>
         )}
         <Text size={100} style={{ display: "block", color: tokens.colorNeutralForeground4, marginTop: 8 }}>
-          "Download Blueprint" exports an importable Blueprint file for Customer Decision Hub.
+          "Download Blueprint" exports an importable Blueprint file you can bring into Pega to generate the app.
         </Text>
       </Card>
 
-      {/* Section review with edit navigation (mirrors Pega's consolidated review). */}
+      {/* Section review with edit navigation. */}
       <Card>
         <SectionTitle>Review &amp; edit</SectionTitle>
         <div style={{ marginTop: 8 }}>
@@ -110,38 +122,50 @@ export function SummaryView({
         </div>
       </Card>
 
+      {/* Application context recap. */}
       <Card>
-        <SectionTitle>Who is this for?</SectionTitle>
+        <SectionTitle>Application Context</SectionTitle>
         <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", marginTop: 8 }}>
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Organization</Text>
-          <Text size={300}>{c.orgName} · {c.website}</Text>
+          <Text size={300}>{c.orgName} · {c.location}</Text>
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Industry</Text>
-          <Text size={300}>{data.industry}</Text>
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-          {s.outcomes.map((o) => <Pill key={o} text={o} color={outcomeColor(o)} />)}
-          {s.channels.map((ch) => <Pill key={ch} text={ch} color={channelColor(ch)} />)}
+          <Text size={300}>{c.industry} · {c.subIndustry}</Text>
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Purpose</Text>
+          <Text size={300}>{c.purpose}</Text>
         </div>
       </Card>
 
+      {/* Delivery acceleration (illustrative). */}
       <Card style={{ borderColor: tokens.colorBrandStroke1 }}>
-        <SectionTitle>Potential value of Customer Decision Hub</SectionTitle>
-        <div style={{ fontSize: 30, fontWeight: 800, color: tokens.colorBrandForeground1, margin: "8px 0" }}>
-          {money(estimate(n))} / year
+        <SectionTitle>Delivery acceleration with Blueprint</SectionTitle>
+        <div style={{ display: "flex", gap: 16, alignItems: "baseline", margin: "8px 0", flexWrap: "wrap" }}>
+          <div style={{ fontSize: 30, fontWeight: 800, color: PEGA_PURPLE, lineHeight: 1.1 }}>
+            ~{est.blueprintDays} days
+          </div>
+          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+            with Blueprint vs ~{est.traditionalMonths} months hand-built · <b>{est.fasterX}× faster</b>
+          </Text>
         </div>
-        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-          for {n.toLocaleString()} customers
-        </Text>
-        <ul style={{ margin: "10px 0 0", paddingLeft: 18 }}>
-          {data.value.assumptions.map((a, i) => (
-            <li key={i}><Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>{a}</Text></li>
+        <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+          {data.value.assumptions.map((x, i) => (
+            <li key={i}><Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>{x}</Text></li>
           ))}
         </ul>
         <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-          {[1_000_000, 5_000_000, 10_000_000, 25_000_000].map((opt) => (
-            <Button key={opt} size="small" appearance={opt === n ? "primary" : "outline"} onClick={() => setN(opt)}>
-              {opt / 1_000_000}M
+          {(data.value.scopes ?? ["Pilot", "Department", "Enterprise"]).map((opt) => (
+            <Button key={opt} size="small" appearance={opt === scope ? "primary" : "outline"} onClick={() => setScope(opt)}>
+              {opt}
             </Button>
+          ))}
+        </div>
+      </Card>
+
+      {/* Pega Cloud capabilities. */}
+      <Card>
+        <SectionTitle>Pega Cloud capabilities</SectionTitle>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+          {data.cloudCapabilities.map((cap) => (
+            <Badge key={cap} appearance="outline" color="brand">{cap}</Badge>
           ))}
         </div>
       </Card>

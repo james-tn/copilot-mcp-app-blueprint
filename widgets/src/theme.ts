@@ -1,31 +1,33 @@
-// Color helpers for outcomes, channels and the phase stepper.
+// Color + label helpers for lifecycle step types and stages.
 
-export const OUTCOME_COLORS: Record<string, string> = {
-  Acquire: "#5b8def",
-  Grow: "#2bb673",
-  Nurture: "#8a6ded",
-  Onboard: "#0e7490",
-  "Resilience & Collections": "#b45309",
-  Retain: "#d65db1",
-  Service: "#e0902f",
-};
-export function outcomeColor(outcome: string): string {
-  return OUTCOME_COLORS[outcome] ?? "#8a8886";
+import type { StepType } from "./types";
+
+// Pega brand accent (indigo/purple) used for highlights and primary actions.
+export const PEGA_PURPLE = "#5a1faa";
+
+export interface StepTypeMeta {
+  label: string;
+  color: string;
 }
 
-export const CHANNEL_COLORS: Record<string, string> = {
-  Mobile: "#0a66c2",
-  Email: "#7c3aed",
-  SMS: "#0e7490",
-  Web: "#2bb673",
-  "Push Notifications": "#d65db1",
-  "Paid Media": "#b45309",
-  "Call Center": "#e0563f",
-  IVR: "#5b8def",
-  "Agent Assisted": "#8a6ded",
+// Keyed by the server's step ``type`` (see data.STEP_TYPES).
+export const STEP_TYPE_META: Record<StepType, StepTypeMeta> = {
+  collect: { label: "Collect information", color: "#2bb673" },
+  automation: { label: "Automation", color: "#e0902f" },
+  decision: { label: "Decision", color: "#e0563f" },
+  notification: { label: "Send notification", color: "#d9a514" },
+  document: { label: "Generate document", color: "#0e7490" },
+  "ai-agent": { label: "AI Agent", color: "#8a6ded" },
+  approve: { label: "Approve/Reject", color: "#0a66c2" },
 };
-export function channelColor(channel: string): string {
-  return CHANNEL_COLORS[channel] ?? "#8a8886";
+
+export function stepMeta(type: StepType): StepTypeMeta {
+  return STEP_TYPE_META[type] ?? { label: type, color: "#8a8886" };
+}
+
+// Stage header color. Primary stages are Pega blue; alternate stages are grey.
+export function stageColor(kind: "primary" | "alternate"): string {
+  return kind === "primary" ? "#2c5cc5" : "#6b7280";
 }
 
 // Translucent tint for pill backgrounds (hex + alpha).

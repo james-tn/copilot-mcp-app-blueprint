@@ -92,7 +92,7 @@ az containerapp update -g rg-pega-blueprint-poc -n pega-blueprint-mcp --set-env-
 ```
 
 ### 5. Test
-New Copilot chat → *"Open my customer engagement blueprint"* → click **Sign in**
+New Copilot chat → *"Open my Pega Blueprint"* → click **Sign in**
 → GitHub's **Authorize** screen (once) → blueprint renders. Subsequent calls are
 silent (the broker caches + refreshes the token).
 

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "React + Fluent UI Customer Engagement Blueprint widget for the MCP Apps server",
+  "description": "React + Fluent UI Pega Blueprint widget for the MCP Apps server",
   "scripts": {
     "dev": "vite",
     "build": "node build.mjs",

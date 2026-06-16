@@ -27,9 +27,9 @@ OUT = REPO_ROOT / "appPackage" / "ai-plugin.json"
 
 NAME = "Pega Blueprint${{APP_NAME_SUFFIX}}"
 DESCRIPTION = (
-    "Customer Engagement Blueprint for Microsoft 365 Copilot: design 1:1 customer "
-    "engagement — personas, brand voice, and channel experiences — rendered inline "
-    "as a rich interactive widget."
+    "Pega Blueprint for Microsoft 365 Copilot: design build-ready workflow "
+    "applications — case types, case lifecycles, data objects and personas — "
+    "rendered inline as a rich interactive widget."
 )
 NAMESPACE = "pegablueprint"
 

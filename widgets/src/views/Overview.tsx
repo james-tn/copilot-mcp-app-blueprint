@@ -1,49 +1,71 @@
 import React from "react";
-import { tokens, Text, Button } from "@fluentui/react-components";
-import { Open16Regular } from "@fluentui/react-icons";
-import { Card, StatTile, SectionTitle, Pill } from "../components/ui";
-import { outcomeColor, channelColor } from "../theme";
+import { tokens, Text, Button, Badge } from "@fluentui/react-components";
+import { Open16Regular, Flowchart20Regular } from "@fluentui/react-icons";
+import { Card, StatTile, SectionTitle } from "../components/ui";
+import { PEGA_PURPLE } from "../theme";
 import type { OverviewData, Phase } from "../types";
 
-export function Overview({ data, navigate }: { data: OverviewData; navigate: (p: Phase) => void }) {
+export function Overview({
+  data,
+  navigate,
+  onOpenWorkflow,
+}: {
+  data: OverviewData;
+  navigate: (p: Phase) => void;
+  onOpenWorkflow: (caseId: string) => void;
+}) {
   const c = data.context;
-  const s = data.setup;
   return (
     <>
-      <div style={{ display: "flex", gap: 10 }}>
-        <StatTile value={data.personaCount} label="Personas" />
-        <StatTile value={data.counts.actions} label="Actions" />
-        <StatTile value={data.counts.treatments} label="Messages" />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <StatTile value={data.counts.caseTypes} label="Workflows" />
+        <StatTile value={data.counts.stages} label="Stages" />
+        <StatTile value={data.counts.steps} label="Steps" />
+        <StatTile value={data.counts.personas} label="Personas" />
       </div>
 
       <Card>
-        <SectionTitle>Context</SectionTitle>
+        <SectionTitle>Application Context</SectionTitle>
         <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", marginTop: 8 }}>
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Organization</Text>
-          <Text size={300}>{c.orgName} · {c.website}</Text>
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Objective</Text>
-          <Text size={300}>{c.objective}</Text>
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Market</Text>
-          <Text size={300}>{c.language} · {c.location}</Text>
+          <Text size={300}>{c.orgName} · {c.location}</Text>
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Industry</Text>
+          <Text size={300}>{c.industry} · {c.subIndustry}</Text>
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>Purpose</Text>
+          <Text size={300}>{c.purpose}</Text>
         </div>
+        <Text size={200} style={{ display: "block", marginTop: 8, color: tokens.colorNeutralForeground2, lineHeight: 1.4 }}>
+          {c.description}
+        </Text>
         <Button appearance="subtle" size="small" icon={<Open16Regular />} style={{ marginTop: 8 }}
           onClick={() => navigate("context")}>Edit context</Button>
       </Card>
 
       <Card>
-        <SectionTitle>Setup</SectionTitle>
-        <Text size={200} style={{ color: tokens.colorNeutralForeground3, display: "block", marginTop: 6 }}>Industry</Text>
-        <Text size={300}>{s.industry} — {s.products.join(", ")}</Text>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-          {s.outcomes.map((o) => <Pill key={o} text={o} color={outcomeColor(o)} />)}
-          {s.channels.map((ch) => <Pill key={ch} text={ch} color={channelColor(ch)} />)}
+        <SectionTitle>Workflows</SectionTitle>
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3, display: "block", margin: "4px 0 10px" }}>
+          {data.counts.caseTypes} Pega case types generated for this application.
+        </Text>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
+          {data.caseTypes.map((ct) => (
+            <Card key={ct.id} onClick={() => onOpenWorkflow(ct.id)}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <Flowchart20Regular style={{ color: PEGA_PURPLE, flexShrink: 0 }} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <Text weight="semibold" size={300} style={{ display: "block" }}>{ct.name}</Text>
+                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                    {ct.stageCount} stages · {ct.stepCount} steps
+                  </Text>
+                </div>
+                {ct.primary && <Badge appearance="tint" color="brand" size="small">Primary</Badge>}
+              </div>
+            </Card>
+          ))}
         </div>
-        <Button appearance="subtle" size="small" icon={<Open16Regular />} style={{ marginTop: 10 }}
-          onClick={() => navigate("setup")}>Edit setup</Button>
       </Card>
 
       <Card style={{ borderColor: tokens.colorBrandStroke1 }}>
-        <SectionTitle>Continue where you left off</SectionTitle>
+        <SectionTitle>Continue designing</SectionTitle>
         <Text size={300} style={{ display: "block", margin: "6px 0 10px", color: tokens.colorNeutralForeground2 }}>
           Your blueprint is furthest along at <b>{data.resumePhase}</b>.
         </Text>
@@ -51,8 +73,8 @@ export function Overview({ data, navigate }: { data: OverviewData; navigate: (p:
           <Button appearance="primary" onClick={() => navigate(data.resumePhase)}>
             Go to {data.resumePhase}
           </Button>
-          <Button appearance="outline" onClick={() => navigate("personas")}>Personas</Button>
-          <Button appearance="outline" onClick={() => navigate("experiences")}>Experiences</Button>
+          <Button appearance="outline" onClick={() => navigate("data")}>Data &amp; Integrations</Button>
+          <Button appearance="outline" onClick={() => navigate("summary")}>Summary</Button>
         </div>
       </Card>
     </>

@@ -2,36 +2,36 @@
     "$schema": "https://developer.microsoft.com/json-schemas/copilot/plugin/v2.4/schema.json",
     "schema_version": "v2.4",
     "name_for_human": "Pega Blueprint${{APP_NAME_SUFFIX}}",
-    "description_for_human": "Customer Engagement Blueprint for Microsoft 365 Copilot: design 1:1 customer engagement \u2014 personas, brand voice, and channel experiences \u2014 rendered inline as a rich interactive widget.",
+    "description_for_human": "Pega Blueprint for Microsoft 365 Copilot: design build-ready workflow applications \u2014 case types, case lifecycles, data objects and personas \u2014 rendered inline as a rich interactive widget.",
     "namespace": "pegablueprint",
     "functions": [
         {
             "name": "show_blueprint",
-            "description": "Open the Customer Engagement Blueprint and render it inline. Optional 'phase' selects which step to show: 'context' (business & objective), 'setup' (industry, outcomes, channels), 'personas', 'brand' (voice & visual identity), 'experiences' (actions & messages), or 'summary'. Omit phase for the overview. Use for 'open my blueprint', 'show the blueprint', 'go to <phase>'."
+            "description": "Open the Pega Blueprint (workflow / application design) and render it inline. Optional 'phase' selects which design step to show: 'context' (industry, purpose, description), 'workflows' (the generated case types), 'workflow-details' (a case lifecycle of stages & steps), 'data' (data objects & integrations), 'personas', or 'summary'. Omit phase for the overview. Use for 'open my blueprint', 'show the blueprint', 'go to <step>'."
+        },
+        {
+            "name": "show_workflows",
+            "description": "Render the workflows \u2014 Pega Case Types \u2014 generated for the application, each with its description and stage/step counts. Use for 'show the workflows', 'what case types did we create', 'list the workflows'."
+        },
+        {
+            "name": "show_workflow",
+            "description": "Drill into a single workflow and render its Case Lifecycle: primary and alternate stages, the steps inside each (and their step types: Collect information, Automation, Decision, Send notification, Generate document, AI Agent, Approve/Reject). Provide 'case' as a workflow name (e.g. 'Employee Onboarding') or id. Use for 'show the Employee Onboarding lifecycle', 'open the <workflow> stages'."
+        },
+        {
+            "name": "show_data",
+            "description": "Render the Data & Integrations step: the application's Data Objects (local vs external and their system of record), external system Integrations, inbound event channels, and user identity. Use for 'show the data model', 'what data objects', 'show integrations'."
         },
         {
             "name": "show_personas",
-            "description": "Render the AI-generated customer personas grid (name, age band, description). Use for 'show the personas', 'who are our audiences', 'review customers'."
-        },
-        {
-            "name": "show_brand",
-            "description": "Render the brand voice characteristics, visual identity (logo, brand colors) and a live sample message preview. Use for 'show brand voice', 'what's our tone', 'brand settings'."
-        },
-        {
-            "name": "show_experiences",
-            "description": "Render the generated Actions (offers) grouped by product, each with a count of channel messages (treatments). Use for 'show the experiences', 'what offers did we create', 'show the actions/messages'."
-        },
-        {
-            "name": "show_action",
-            "description": "Drill into a single Action and render its channel treatments as message mockups (image, headline, body, CTA). Provide 'action' as a name (e.g. 'Surface Pro Accessory Bundle') or id. Use for 'show the Surface Pro treatments', 'open the <action> offer'."
+            "description": "Render the worker personas involved in the workflows (name + description). Use for 'show the personas', 'who uses this app', 'what roles'."
         },
         {
             "name": "show_summary",
-            "description": "Render the blueprint summary: action/message counts, who it's for, the Customer Decision Hub value calculator, and download options (PDF, Excel, importable Blueprint file). Use for 'summarize the blueprint', 'show the summary', 'what's the value', 'download/export the blueprint'."
+            "description": "Render the blueprint summary: application architecture counts (workflows, stages, steps, data objects, personas), an illustrative delivery-acceleration estimate, Pega Cloud capabilities, and download options (PDF, Excel, importable Blueprint file). Use for 'summarize the blueprint', 'show the summary', 'how much faster', 'download/export the blueprint'."
         },
         {
             "name": "get_blueprint_summary",
-            "description": "Return headline blueprint metrics as data only (no widget) for quick factual answers such as 'how many personas are there?' or 'what's the objective?'."
+            "description": "Return headline blueprint metrics as data only (no widget) for quick factual answers such as 'how many workflows are there?' or 'what's the application about?'."
         }
     ],
     "runtimes": [
@@ -43,7 +43,7 @@
                     "tools": [
                         {
                             "name": "show_blueprint",
-                            "description": "Open the Customer Engagement Blueprint and render it inline. Optional 'phase' selects which step to show: 'context' (business & objective), 'setup' (industry, outcomes, channels), 'personas', 'brand' (voice & visual identity), 'experiences' (actions & messages), or 'summary'. Omit phase for the overview. Use for 'open my blueprint', 'show the blueprint', 'go to <phase>'.",
+                            "description": "Open the Pega Blueprint (workflow / application design) and render it inline. Optional 'phase' selects which design step to show: 'context' (industry, purpose, description), 'workflows' (the generated case types), 'workflow-details' (a case lifecycle of stages & steps), 'data' (data objects & integrations), 'personas', or 'summary'. Omit phase for the overview. Use for 'open my blueprint', 'show the blueprint', 'go to <step>'.",
                             "inputSchema": {
                                 "properties": {
                                     "phase": {
@@ -69,8 +69,77 @@
                             }
                         },
                         {
+                            "name": "show_workflows",
+                            "description": "Render the workflows \u2014 Pega Case Types \u2014 generated for the application, each with its description and stage/step counts. Use for 'show the workflows', 'what case types did we create', 'list the workflows'.",
+                            "inputSchema": {
+                                "properties": {},
+                                "title": "show_workflowsArguments",
+                                "type": "object"
+                            },
+                            "annotations": {
+                                "readOnlyHint": true
+                            },
+                            "execution": {
+                                "taskSupport": "forbidden"
+                            },
+                            "_meta": {
+                                "ui": {
+                                    "resourceUri": "ui://pega-blueprint/app.html"
+                                },
+                                "ui/resourceUri": "ui://pega-blueprint/app.html"
+                            }
+                        },
+                        {
+                            "name": "show_workflow",
+                            "description": "Drill into a single workflow and render its Case Lifecycle: primary and alternate stages, the steps inside each (and their step types: Collect information, Automation, Decision, Send notification, Generate document, AI Agent, Approve/Reject). Provide 'case' as a workflow name (e.g. 'Employee Onboarding') or id. Use for 'show the Employee Onboarding lifecycle', 'open the <workflow> stages'.",
+                            "inputSchema": {
+                                "properties": {
+                                    "case": {
+                                        "default": "",
+                                        "title": "Case",
+                                        "type": "string"
+                                    }
+                                },
+                                "title": "show_workflowArguments",
+                                "type": "object"
+                            },
+                            "annotations": {
+                                "readOnlyHint": true
+                            },
+                            "execution": {
+                                "taskSupport": "forbidden"
+                            },
+                            "_meta": {
+                                "ui": {
+                                    "resourceUri": "ui://pega-blueprint/app.html"
+                                },
+                                "ui/resourceUri": "ui://pega-blueprint/app.html"
+                            }
+                        },
+                        {
+                            "name": "show_data",
+                            "description": "Render the Data & Integrations step: the application's Data Objects (local vs external and their system of record), external system Integrations, inbound event channels, and user identity. Use for 'show the data model', 'what data objects', 'show integrations'.",
+                            "inputSchema": {
+                                "properties": {},
+                                "title": "show_dataArguments",
+                                "type": "object"
+                            },
+                            "annotations": {
+                                "readOnlyHint": true
+                            },
+                            "execution": {
+                                "taskSupport": "forbidden"
+                            },
+                            "_meta": {
+                                "ui": {
+                                    "resourceUri": "ui://pega-blueprint/app.html"
+                                },
+                                "ui/resourceUri": "ui://pega-blueprint/app.html"
+                            }
+                        },
+                        {
                             "name": "show_personas",
-                            "description": "Render the AI-generated customer personas grid (name, age band, description). Use for 'show the personas', 'who are our audiences', 'review customers'.",
+                            "description": "Render the worker personas involved in the workflows (name + description). Use for 'show the personas', 'who uses this app', 'what roles'.",
                             "inputSchema": {
                                 "properties": {},
                                 "title": "show_personasArguments",
@@ -90,79 +159,8 @@
                             }
                         },
                         {
-                            "name": "show_brand",
-                            "description": "Render the brand voice characteristics, visual identity (logo, brand colors) and a live sample message preview. Use for 'show brand voice', 'what's our tone', 'brand settings'.",
-                            "inputSchema": {
-                                "properties": {},
-                                "title": "show_brandArguments",
-                                "type": "object"
-                            },
-                            "annotations": {
-                                "readOnlyHint": true
-                            },
-                            "execution": {
-                                "taskSupport": "forbidden"
-                            },
-                            "_meta": {
-                                "ui": {
-                                    "resourceUri": "ui://pega-blueprint/app.html"
-                                },
-                                "ui/resourceUri": "ui://pega-blueprint/app.html"
-                            }
-                        },
-                        {
-                            "name": "show_experiences",
-                            "description": "Render the generated Actions (offers) grouped by product, each with a count of channel messages (treatments). Use for 'show the experiences', 'what offers did we create', 'show the actions/messages'.",
-                            "inputSchema": {
-                                "properties": {},
-                                "title": "show_experiencesArguments",
-                                "type": "object"
-                            },
-                            "annotations": {
-                                "readOnlyHint": true
-                            },
-                            "execution": {
-                                "taskSupport": "forbidden"
-                            },
-                            "_meta": {
-                                "ui": {
-                                    "resourceUri": "ui://pega-blueprint/app.html"
-                                },
-                                "ui/resourceUri": "ui://pega-blueprint/app.html"
-                            }
-                        },
-                        {
-                            "name": "show_action",
-                            "description": "Drill into a single Action and render its channel treatments as message mockups (image, headline, body, CTA). Provide 'action' as a name (e.g. 'Surface Pro Accessory Bundle') or id. Use for 'show the Surface Pro treatments', 'open the <action> offer'.",
-                            "inputSchema": {
-                                "properties": {
-                                    "action": {
-                                        "title": "Action",
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "action"
-                                ],
-                                "title": "show_actionArguments",
-                                "type": "object"
-                            },
-                            "annotations": {
-                                "readOnlyHint": true
-                            },
-                            "execution": {
-                                "taskSupport": "forbidden"
-                            },
-                            "_meta": {
-                                "ui": {
-                                    "resourceUri": "ui://pega-blueprint/app.html"
-                                },
-                                "ui/resourceUri": "ui://pega-blueprint/app.html"
-                            }
-                        },
-                        {
                             "name": "show_summary",
-                            "description": "Render the blueprint summary: action/message counts, who it's for, the Customer Decision Hub value calculator, and download options (PDF, Excel, importable Blueprint file). Use for 'summarize the blueprint', 'show the summary', 'what's the value', 'download/export the blueprint'.",
+                            "description": "Render the blueprint summary: application architecture counts (workflows, stages, steps, data objects, personas), an illustrative delivery-acceleration estimate, Pega Cloud capabilities, and download options (PDF, Excel, importable Blueprint file). Use for 'summarize the blueprint', 'show the summary', 'how much faster', 'download/export the blueprint'.",
                             "inputSchema": {
                                 "properties": {},
                                 "title": "show_summaryArguments",
@@ -183,7 +181,7 @@
                         },
                         {
                             "name": "get_blueprint_summary",
-                            "description": "Return headline blueprint metrics as data only (no widget) for quick factual answers such as 'how many personas are there?' or 'what's the objective?'.",
+                            "description": "Return headline blueprint metrics as data only (no widget) for quick factual answers such as 'how many workflows are there?' or 'what's the application about?'.",
                             "inputSchema": {
                                 "properties": {},
                                 "title": "get_blueprint_summaryArguments",
@@ -201,16 +199,15 @@
             },
             "run_for_functions": [
                 "show_blueprint",
+                "show_workflows",
+                "show_workflow",
+                "show_data",
                 "show_personas",
-                "show_brand",
-                "show_experiences",
-                "show_action",
                 "show_summary",
                 "get_blueprint_summary"
             ],
             "auth": {
-                "type": "OAuthPluginVault",
-                "reference_id": "${{OAUTH_REGISTRATION_ID}}"
+                "type": "None"
             }
         }
     ]

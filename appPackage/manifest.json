@@ -15,13 +15,13 @@
     },
     "name": {
         "short": "Pega Blueprint${{APP_NAME_SUFFIX}}",
-        "full": "Customer Engagement Blueprint Agent for Microsoft 365 Copilot"
+        "full": "Pega Blueprint Agent for Microsoft 365 Copilot"
     },
     "description": {
-        "short": "Design 1:1 customer engagement blueprints in Copilot.",
-        "full": "A declarative agent that designs customer engagement blueprints — personas, brand voice and channel experiences — and renders a rich, interactive widget inline in Microsoft 365 Copilot, powered by an MCP Apps server."
+        "short": "Design build-ready workflow apps in Copilot.",
+        "full": "A declarative agent that designs Pega Blueprint applications — workflows (case types), case lifecycles, data objects and personas — and renders a rich, interactive widget inline in Microsoft 365 Copilot, powered by an MCP Apps server."
     },
-    "accentColor": "#f25022",
+    "accentColor": "#5a1faa",
     "composeExtensions": [],
     "copilotAgents": {
         "declarativeAgents": [

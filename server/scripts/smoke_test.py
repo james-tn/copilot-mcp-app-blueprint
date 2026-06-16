@@ -45,15 +45,15 @@ async def main() -> None:
 
             ov = await call("show_blueprint")
             assert ov.get("view") == "overview", ov
+            wf = await call("show_workflows")
+            assert wf.get("caseTypes"), wf
+            first_case = wf["caseTypes"][0]["id"]
+            det = await call("show_workflow", case=first_case)
+            assert det.get("view") == "workflow-details", det
+            assert det["case"]["stages"], det
+            await call("show_data")
             personas = await call("show_personas")
-            assert len(personas.get("personas", [])) == 5
-            await call("show_brand")
-            exp = await call("show_experiences")
-            assert exp.get("groups"), exp
-            first_action = exp["groups"][0]["actions"][0]["id"]
-            act = await call("show_action", action=first_action)
-            assert act.get("view") == "action", act
-            assert act["action"]["treatments"], act
+            assert len(personas.get("personas", [])) == 6
             await call("show_summary")
             data = await call("get_blueprint_summary")
             assert data.get("view") == "summary-data", data

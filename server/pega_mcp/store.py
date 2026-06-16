@@ -1,8 +1,8 @@
 """In-memory blueprint store + view payload builders (the "MCP tool surface").
 
 Every public ``view_*`` function returns a ``structuredContent`` dict with a
-``view`` discriminator the widget routes on (overview | context | setup |
-personas | brand | experiences | action | summary | error).
+``view`` discriminator the widget routes on (overview | context | workflows |
+workflow-details | data | personas | summary | error).
 """
 
 from __future__ import annotations
@@ -13,6 +13,8 @@ from . import data
 from .settings import get_settings
 
 _store: dict[str, dict[str, Any]] = {}
+
+_AUTOMATED_TYPES = {"automation", "ai-agent"}
 
 
 def _public_base() -> str:
@@ -41,21 +43,109 @@ def get(blueprint_id: str | None = None) -> dict[str, Any]:
     return _first()
 
 
-def summary_counts(bp: dict[str, Any]) -> dict[str, int]:
-    treatments = sum(len(a["treatments"]) for a in bp["actions"])
-    channels = len({t["channel"] for a in bp["actions"] for t in a["treatments"]})
-    return {"actions": len(bp["actions"]), "treatments": treatments, "channels": channels}
+# ── Lifecycle helpers ────────────────────────────────────────────────────────
+
+def stage_steps(stage: dict[str, Any]) -> list[dict[str, Any]]:
+    """Flatten a stage's steps (direct steps + steps nested under processes)."""
+    out = list(stage.get("steps") or [])
+    for proc in stage.get("processes") or []:
+        out.extend(proc.get("steps") or [])
+    return out
+
+
+def case_step_count(case: dict[str, Any]) -> int:
+    return sum(len(stage_steps(st)) for st in case["stages"])
+
+
+def case_counts(case: dict[str, Any]) -> dict[str, int]:
+    stages = case["stages"]
+    steps = [s for st in stages for s in stage_steps(st)]
+    return {
+        "stages": len(stages),
+        "primaryStages": sum(1 for st in stages if st["kind"] == "primary"),
+        "alternateStages": sum(1 for st in stages if st["kind"] == "alternate"),
+        "steps": len(steps),
+        "automations": sum(1 for s in steps if s["type"] in _AUTOMATED_TYPES),
+    }
+
+
+def blueprint_counts(bp: dict[str, Any]) -> dict[str, int]:
+    cases = bp["caseTypes"]
+    steps = sum(case_step_count(c) for c in cases)
+    stages = sum(len(c["stages"]) for c in cases)
+    automations = sum(
+        1 for c in cases for st in c["stages"] for s in stage_steps(st)
+        if s["type"] in _AUTOMATED_TYPES
+    )
+    return {
+        "caseTypes": len(cases),
+        "stages": stages,
+        "steps": steps,
+        "automations": automations,
+        "dataObjects": len(bp["dataObjects"]),
+        "personas": len(bp["personas"]),
+        "integrations": len(bp["integrations"]),
+    }
+
+
+def get_case(bp: dict[str, Any], case_id: str | None) -> dict[str, Any] | None:
+    if not case_id:
+        # Default to the primary case type (or the first one).
+        for c in bp["caseTypes"]:
+            if c.get("primary"):
+                return c
+        return bp["caseTypes"][0] if bp["caseTypes"] else None
+    cid = case_id.lower()
+    for c in bp["caseTypes"]:
+        if c["id"] == case_id or cid in c["name"].lower() or cid in c["id"]:
+            return c
+    return None
 
 
 def latest_phase(bp: dict[str, Any]) -> str:
-    if bp["actions"]:
-        return "experiences"
-    if bp["personas"]:
-        return "personas"
+    if bp["caseTypes"] and any(c["stages"] for c in bp["caseTypes"]):
+        return "workflow-details"
+    if bp["caseTypes"]:
+        return "workflows"
     return "context"
 
 
-# ── Mutations ───────────────────────────────────────────────────────────────
+def calculate_acceleration(bp: dict[str, Any], scope: str = "Department") -> dict[str, Any]:
+    """Illustrative delivery-acceleration model for the Summary value tile.
+
+    Traditional hand-build time scales with the number of lifecycle steps; Pega
+    Blueprint compresses design-to-app dramatically. Numbers are illustrative.
+    """
+    mult = {"Pilot": 0.6, "Department": 1.0, "Enterprise": 1.8}.get(scope, 1.0)
+    c = blueprint_counts(bp)
+    steps = c["steps"]
+    traditional_weeks = max(1, round(steps * 0.6 * mult))
+    traditional_months = round(traditional_weeks / 4.0, 1)
+    blueprint_days = max(3, round(steps * 0.4 * mult))
+    faster_x = max(2, round((traditional_weeks * 5) / blueprint_days))
+    return {
+        "scope": scope,
+        "scopes": ["Pilot", "Department", "Enterprise"],
+        "traditionalWeeks": traditional_weeks,
+        "traditionalMonths": traditional_months,
+        "blueprintDays": blueprint_days,
+        "fasterX": faster_x,
+        "assumptions": [
+            f"{steps} steps across {c['caseTypes']} workflows ({c['automations']} automated)",
+            "Traditional hand-build estimated at ~0.6 week per lifecycle step",
+            "Illustrative estimate for the POC — not a Pega-validated figure",
+        ],
+    }
+
+
+# ── Mutations ────────────────────────────────────────────────────────────────
+
+def generate_case_types(blueprint_id: str | None = None) -> dict[str, Any]:
+    bp = get(blueprint_id)
+    if not bp["caseTypes"]:
+        bp["caseTypes"] = data.seed_case_types()
+    return bp
+
 
 def generate_personas(blueprint_id: str | None = None) -> dict[str, Any]:
     bp = get(blueprint_id)
@@ -64,67 +154,34 @@ def generate_personas(blueprint_id: str | None = None) -> dict[str, Any]:
     return bp
 
 
-def generate_experiences(blueprint_id: str | None = None) -> dict[str, Any]:
-    bp = get(blueprint_id)
-    if not bp["actions"]:
-        bp["actions"] = data.seed_actions()
-    return bp
-
-
-def set_focus(bp: dict[str, Any], outcomes: list[str] | None = None,
-              channels: list[str] | None = None) -> dict[str, Any]:
-    if outcomes:
-        bp["outcomes"] = outcomes
-    if channels:
-        bp["channels"] = channels
-    return bp
-
-
-def set_voice_enabled(bp: dict[str, Any], toggles: dict[str, bool]) -> dict[str, Any]:
-    for v in bp["voice"]:
-        if v["id"] in toggles:
-            v["enabled"] = toggles[v["id"]]
-    return bp
-
-
-def get_action(bp: dict[str, Any], action_id: str) -> dict[str, Any] | None:
-    aid = (action_id or "").lower()
-    for a in bp["actions"]:
-        if a["id"] == action_id or aid in a["name"].lower() or aid in a["id"]:
-            return a
-    return None
-
-
-def calculate_value(num_customers: int) -> dict[str, Any]:
-    uplift_per_customer = 18
-    adoption = 0.12
-    annual_value = round(num_customers * adoption * uplift_per_customer)
-    return {
-        "numCustomers": num_customers,
-        "annualValue": annual_value,
-        "assumptions": [
-            f"{round(adoption * 100)}% of customers adopt at least one recommended action",
-            f"${uplift_per_customer} average annual ARPU uplift per adopting customer",
-            "Illustrative estimate for the POC — not a Pega-validated figure",
-        ],
-    }
-
-
-# ── Shared header carried in every view so the widget can render the stepper ──
+# ── Shared header carried in every view so the widget renders the stepper ─────
 
 def _header(bp: dict[str, Any], phase: str) -> dict[str, Any]:
     return {
         "blueprintId": bp["id"],
         "title": bp["title"],
         "industry": bp["industry"],
+        "subIndustry": bp["subIndustry"],
         "phase": phase,
         "phases": data.PHASES,
-        "brand": {
-            "headerColor": bp["headerColor"],
-            "backgroundColor": bp["backgroundColor"],
-            "footerColor": bp["footerColor"],
-        },
-        "counts": summary_counts(bp),
+        "counts": blueprint_counts(bp),
+    }
+
+
+def _context_block(bp: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "orgName": bp["orgName"], "description": bp["description"],
+        "industry": bp["industry"], "subIndustry": bp["subIndustry"],
+        "purpose": bp["purpose"], "language": bp["language"], "location": bp["location"],
+    }
+
+
+def _case_summary(c: dict[str, Any]) -> dict[str, Any]:
+    cc = case_counts(c)
+    return {
+        "id": c["id"], "name": c["name"], "primary": c.get("primary", False),
+        "description": c["description"],
+        "stageCount": cc["stages"], "stepCount": cc["steps"], "automations": cc["automations"],
     }
 
 
@@ -136,25 +193,8 @@ def view_overview(blueprint_id: str | None = None) -> dict[str, Any]:
         "view": "overview",
         **_header(bp, "context"),
         "context": _context_block(bp),
-        "setup": _setup_block(bp),
-        "personaCount": len(bp["personas"]),
+        "caseTypes": [_case_summary(c) for c in bp["caseTypes"]],
         "resumePhase": latest_phase(bp),
-    }
-
-
-def _context_block(bp: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "orgName": bp["orgName"], "website": bp["website"], "objective": bp["objective"],
-        "objectiveDetails": bp["objectiveDetails"], "language": bp["language"],
-        "location": bp["location"],
-    }
-
-
-def _setup_block(bp: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "industry": bp["industry"], "products": bp["products"], "outcomes": bp["outcomes"],
-        "channels": bp["channels"], "features": bp["features"],
-        "allOutcomes": data.OUTCOMES, "allChannels": data.CHANNELS, "allFeatures": data.FEATURES,
     }
 
 
@@ -163,62 +203,52 @@ def view_context(blueprint_id: str | None = None) -> dict[str, Any]:
     return {"view": "context", **_header(bp, "context"), "context": _context_block(bp)}
 
 
-def view_setup(blueprint_id: str | None = None) -> dict[str, Any]:
+def view_workflows(blueprint_id: str | None = None) -> dict[str, Any]:
+    bp = generate_case_types(blueprint_id)
+    return {
+        "view": "workflows", **_header(bp, "workflows"),
+        "caseTypes": [_case_summary(c) for c in bp["caseTypes"]],
+    }
+
+
+def view_workflow_details(blueprint_id: str | None, case_id: str | None = None) -> dict[str, Any]:
+    bp = generate_case_types(blueprint_id)
+    case = get_case(bp, case_id)
+    if not case:
+        return {"view": "error", **_header(bp, "workflow-details"),
+                "message": f"No workflow found matching '{case_id}'."}
+    return {
+        "view": "workflow-details", **_header(bp, "workflow-details"),
+        "caseList": [{"id": c["id"], "name": c["name"], "primary": c.get("primary", False)}
+                     for c in bp["caseTypes"]],
+        "activeCaseId": case["id"],
+        "case": {
+            "id": case["id"], "name": case["name"], "description": case["description"],
+            "primary": case.get("primary", False),
+            "stages": case["stages"],
+            "counts": case_counts(case),
+        },
+    }
+
+
+def view_data(blueprint_id: str | None = None) -> dict[str, Any]:
     bp = get(blueprint_id)
-    return {"view": "setup", **_header(bp, "setup"), "setup": _setup_block(bp)}
+    objs = bp["dataObjects"]
+    return {
+        "view": "data", **_header(bp, "data"),
+        "identity": bp["identity"],
+        "inboundEvents": bp["inboundEvents"],
+        "dataObjects": {
+            "local": [o for o in objs if o["sor"] == "local"],
+            "external": [o for o in objs if o["sor"] == "external"],
+        },
+        "integrations": bp["integrations"],
+    }
 
 
 def view_personas(blueprint_id: str | None = None) -> dict[str, Any]:
     bp = generate_personas(blueprint_id)
     return {"view": "personas", **_header(bp, "personas"), "personas": bp["personas"]}
-
-
-def view_brand(blueprint_id: str | None = None) -> dict[str, Any]:
-    bp = get(blueprint_id)
-    persona = bp["personas"][0] if bp["personas"] else None
-    enabled = [v["name"] for v in bp["voice"] if v["enabled"]]
-    preview = {
-        "imageUrl": data.img("preview", 600, 280),
-        "headline": "A smarter mobile plan, recommended by experts",
-        "greeting": f"Hi {persona['name'].split()[-1] if persona else 'there'},",
-        "body": (
-            "When work, streaming, and everyday sharing happen across all your devices, the right "
-            f"plan matters. {bp['orgName']} recommends plans built for real daily use, with "
-            "dependable coverage and clear value."
-        ),
-        "cta": "See Plans",
-        "voiceApplied": enabled,
-    }
-    return {
-        "view": "brand", **_header(bp, "brand"),
-        "voice": bp["voice"],
-        "visual": {"logoUrl": bp["logoUrl"], "headerColor": bp["headerColor"],
-                   "backgroundColor": bp["backgroundColor"], "footerColor": bp["footerColor"]},
-        "preview": preview,
-    }
-
-
-def view_experiences(blueprint_id: str | None = None) -> dict[str, Any]:
-    bp = generate_experiences(blueprint_id)
-    # Group actions by product (mirrors Pega's Product > Objective columns).
-    groups: dict[str, list[dict[str, Any]]] = {}
-    for a in bp["actions"]:
-        groups.setdefault(a["product"], []).append({
-            "id": a["id"], "name": a["name"], "objective": a["objective"],
-            "description": a["description"], "treatmentCount": len(a["treatments"]),
-            "imageUrl": a["treatments"][0]["imageUrl"] if a["treatments"] else None,
-        })
-    grouped = [{"product": p, "actions": items} for p, items in groups.items()]
-    return {"view": "experiences", **_header(bp, "experiences"), "groups": grouped}
-
-
-def view_action(blueprint_id: str | None, action_id: str) -> dict[str, Any]:
-    bp = generate_experiences(blueprint_id)
-    a = get_action(bp, action_id)
-    if not a:
-        return {"view": "error", **_header(bp, "experiences"),
-                "message": f"No action found matching '{action_id}'."}
-    return {"view": "action", **_header(bp, "experiences"), "action": a}
 
 
 def view_summary(blueprint_id: str | None = None) -> dict[str, Any]:
@@ -229,20 +259,25 @@ def view_summary(blueprint_id: str | None = None) -> dict[str, Any]:
         "excel": f"{base}/export/{bp['id']}/excel",
         "blueprint": f"{base}/export/{bp['id']}/blueprint",
     }
-    # Read-only section review with "edit this section" navigation (mirrors Pega's
-    # consolidated summary review).
+    c = blueprint_counts(bp)
     sections = [
-        {"phase": "context", "label": "Context", "summary": f"{bp['orgName']} · {bp['objective']}"},
-        {"phase": "setup", "label": "Setup", "summary": f"{bp['industry']} · {', '.join(bp['outcomes']) or '—'} · {', '.join(bp['channels']) or '—'}"},
-        {"phase": "personas", "label": "Personas", "summary": f"{len(bp['personas'])} personas"},
-        {"phase": "brand", "label": "Brand", "summary": f"{sum(1 for v in bp['voice'] if v['enabled'])} voice traits enabled"},
-        {"phase": "experiences", "label": "Experiences", "summary": f"{len(bp['actions'])} actions · {summary_counts(bp)['treatments']} messages"},
+        {"phase": "context", "label": "Application Context",
+         "summary": f"{bp['orgName']} · {bp['subIndustry']} · {bp['purpose']}"},
+        {"phase": "workflows", "label": "Workflows",
+         "summary": f"{c['caseTypes']} case types · {c['stages']} stages"},
+        {"phase": "workflow-details", "label": "Workflow Details",
+         "summary": f"{c['steps']} steps · {c['automations']} automated"},
+        {"phase": "data", "label": "Data & Integrations",
+         "summary": f"{c['dataObjects']} data objects · {c['integrations']} integrations"},
+        {"phase": "personas", "label": "Personas",
+         "summary": f"{c['personas']} personas"},
     ]
     return {
         "view": "summary", **_header(bp, "summary"),
         "context": _context_block(bp),
-        "setup": _setup_block(bp),
-        "value": calculate_value(10_000_000),
+        "architecture": c,
+        "cloudCapabilities": data.CLOUD_CAPABILITIES,
+        "value": calculate_acceleration(bp),
         "exports": exports,
         "sections": sections,
     }
@@ -251,12 +286,14 @@ def view_summary(blueprint_id: str | None = None) -> dict[str, Any]:
 def summary_data(blueprint_id: str | None = None) -> dict[str, Any]:
     """Data-only headline metrics (no widget) for quick factual answers."""
     bp = get(blueprint_id)
-    c = summary_counts(bp)
+    c = blueprint_counts(bp)
     return {
         "view": "summary-data",
-        "blueprintId": bp["id"], "title": bp["title"], "industry": bp["industry"],
-        "organization": bp["orgName"], "objective": bp["objective"],
-        "outcomes": bp["outcomes"], "channels": bp["channels"],
-        "personaCount": len(bp["personas"]),
-        "actionCount": c["actions"], "treatmentCount": c["treatments"],
+        "blueprintId": bp["id"], "title": bp["title"],
+        "industry": bp["industry"], "subIndustry": bp["subIndustry"],
+        "organization": bp["orgName"], "purpose": bp["purpose"],
+        "caseTypes": [c2["name"] for c2 in bp["caseTypes"]],
+        "personaCount": c["personas"], "caseTypeCount": c["caseTypes"],
+        "stageCount": c["stages"], "stepCount": c["steps"],
+        "dataObjectCount": c["dataObjects"],
     }

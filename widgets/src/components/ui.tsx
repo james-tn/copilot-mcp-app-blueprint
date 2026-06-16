@@ -14,10 +14,10 @@ export const FONT =
 
 const PHASE_LABELS: Record<Phase, string> = {
   context: "Context",
-  setup: "Setup",
+  workflows: "Workflows",
+  "workflow-details": "Details",
+  data: "Data",
   personas: "Personas",
-  brand: "Brand",
-  experiences: "Experiences",
   summary: "Summary",
 };
 

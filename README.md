@@ -6,9 +6,11 @@
 > with a clean, ISV-friendly **OAuth sign-in**.
 
 This repo is a working, deployed example you can clone, run, and adapt. The demo
-scenario recreates the **Pega Customer Engagement Blueprint** (personas, brand
-voice, channel experiences, a value summary) — but the architecture applies to
-any data-rich agent that needs more than chat bubbles.
+scenario recreates **Pega Blueprint** — the AI tool that turns a prompt into a
+build-ready application: **workflows (Pega case types), each case's lifecycle of
+stages and steps, a data model & integrations, and the personas (roles) involved**
+— but the architecture applies to any data-rich agent that needs more than chat
+bubbles.
 
 <!-- Replace with a real screenshot/GIF of the widget rendering in Copilot. -->
 <!-- ![Blueprint widget in Copilot](docs/images/widget.png) -->
@@ -73,8 +75,8 @@ flowchart LR
    at the widget resource.
 4. Copilot fetches the widget (`ui://…/app.html`) and renders it **inline**, handing
    it the structured data.
-5. The widget can call tools back (`callTool`) to drill down — e.g. open one Action's
-   channel treatments — without leaving the chat.
+5. The widget can call tools back (`callTool`) to drill down — e.g. open one
+   workflow's case lifecycle (stages & steps) — without leaving the chat.
 
 The MCP Apps link is the key convention: every UI tool carries
 `_meta.ui.resourceUri`, **on both the tool descriptor and each tool result**, and
@@ -125,7 +127,7 @@ cd server && uv run python scripts/smoke_test.py
 #   or inspect:  npx @modelcontextprotocol/inspector  → Streamable HTTP → http://localhost:3978/mcp
 
 # UI development with mock data:
-cd widgets && npm run dev     # http://localhost:5174
+cd widgets && npm run dev     # http://localhost:5173/src/
 ```
 
 ---
@@ -164,8 +166,8 @@ az containerapp update -g my-rg -n my-mcp-app \
 
 1. Open <https://m365.cloud.microsoft/chat> → **Agents** → **Upload custom agent**.
 2. Upload `appPackage/build/PegaBlueprintMCP.zip`.
-3. Try: *"Open my customer engagement blueprint"*, then *"show the experiences"*,
-   and click an action to drill into its channel treatments.
+3. Try: *"Open my Pega Blueprint"*, then *"show the workflows"*, and open a
+   workflow to drill into its case lifecycle (stages & steps).
 
 > Sideloading (custom-app upload) must be enabled in the tenant. Fresh dev tenants
 > often disable it by default — see [Security & login](#security--login).
