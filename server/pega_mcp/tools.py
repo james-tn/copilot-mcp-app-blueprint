@@ -42,6 +42,12 @@ async def get_app_state() -> types.CallToolResult:
     return _result(data["summary"], data, ui=False)
 
 
+async def list_blueprints() -> types.CallToolResult:
+    """List all blueprints in the app (the user's created ones + the default sample). Data only."""
+    data = store.list_blueprints()
+    return _result(data["summary"], data, ui=False)
+
+
 async def show_create() -> types.CallToolResult:
     """Render the 'Create a Blueprint' wizard (industry → sub-industry → purpose)."""
     data = store.view_create()
@@ -232,6 +238,14 @@ TOOL_SPECS: list[dict[str, Any]] = [
          "at', 'add a …', 'change …') so your answer matches the live app. TRUST its provenance: if "
          "createdThisSession is true, the blueprint IS the user's own creation — never call it "
          "pre-built/default/sample, and never guess the user's role or unrelated intent. Cheap to call.")},
+    {"name": "list_blueprints", "handler": list_blueprints, "ui": False,
+     "description": (
+         "List every blueprint in the app — the ones the USER created this session (origin=created) "
+         "plus the default sample — each with its title, industry, sub-industry, purpose, counts, and "
+         "whether it's the current one. Data only (no widget). Use whenever the user asks to enumerate "
+         "their work: 'list the blueprints I created', 'what blueprints do I have', 'show my blueprints', "
+         "'how many blueprints did I make'. Trust the provenance — created blueprints ARE the user's own "
+         "work, not samples.")},
 ]
 
 PROMPT_SPECS: list[dict[str, Any]] = [

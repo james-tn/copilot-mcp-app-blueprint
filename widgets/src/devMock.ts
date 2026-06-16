@@ -291,6 +291,17 @@ export function devResolve(name: string, args?: Record<string, unknown>): ToolDa
     const created = !!devCurrent;
     return { view: "app-state", phase: "overview", phaseLabel: "Overview", title: t, subIndustry: s, origin: created ? "created" : "seed", createdThisSession: created, recentActivity: created ? [`Created blueprint '${t}'`] : [], counts: devCurrent?.counts ?? counts, summary: `The user is on the 'Overview' step of '${t}'. ${created ? "The user CREATED this blueprint this session." : "This is the default sample blueprint."}` } as unknown as ToolData;
   }
+  if (name === "list_blueprints") {
+    const created = devCurrent
+      ? [{ id: "bp-created", title: devCurrent.title, industry: devCurrent.industry, subIndustry: devCurrent.subIndustry, purpose: devCurrent.title, origin: "created", createdThisSession: true, isCurrent: true, counts: devCurrent.counts }]
+      : [];
+    const sample = { id: "BP-2027437", title: "Employee Onboarding", industry: "Cross Industry", subIndustry: "Human Resources", purpose: "Employee Onboarding", origin: "seed", createdThisSession: false, isCurrent: !devCurrent, counts };
+    const list = [...created, sample];
+    const summary = created.length
+      ? `You have created ${created.length} blueprint(s) this session: '${devCurrent!.title}' (${devCurrent!.subIndustry}).`
+      : "No blueprints created yet this session — only the default sample is loaded. Open the create wizard to design one.";
+    return { view: "blueprint-list", count: list.length, createdCount: created.length, blueprints: list, summary } as unknown as ToolData;
+  }
   if (name === "show_workflows") return { view: "workflows", ...devHeader("workflows"), caseTypes: devCurrent?.caseTypes ?? caseSummaries } as unknown as ToolData;
   if (name === "show_workflow") {
     if (devCurrent) {

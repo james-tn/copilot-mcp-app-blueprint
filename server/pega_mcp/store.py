@@ -100,6 +100,45 @@ def create_blueprint(industry: str, sub_industry: str, purpose: str,
     return bp
 
 
+def list_blueprints() -> dict[str, Any]:
+    """List every blueprint held in the store (the user's created ones + the sample).
+
+    Data-only snapshot so the agent can accurately answer "list the blueprints I
+    created" / "what blueprints do I have" instead of guessing. User-created
+    blueprints are surfaced first (most relevant); the default sample comes last.
+    """
+    _ensure_seed()
+    items: list[dict[str, Any]] = []
+    for bp in _store.values():
+        origin = bp.get("origin", "seed")
+        items.append({
+            "id": bp["id"],
+            "title": bp["title"],
+            "industry": bp["industry"],
+            "subIndustry": bp["subIndustry"],
+            "purpose": bp.get("purpose", ""),
+            "origin": origin,
+            "createdThisSession": origin == "created",
+            "isCurrent": bp["id"] == _current_id,
+            "counts": blueprint_counts(bp),
+        })
+    items.sort(key=lambda b: b["origin"] != "created")  # created first, sample last
+    created = [b for b in items if b["origin"] == "created"]
+    if created:
+        listing = "; ".join(f"'{b['title']}' ({b['subIndustry']})" for b in created)
+        summary = f"You have created {len(created)} blueprint(s) this session: {listing}."
+    else:
+        summary = ("No blueprints created yet this session — only the default sample is "
+                   "loaded. Open the create wizard to design one.")
+    return {
+        "view": "blueprint-list",
+        "count": len(items),
+        "createdCount": len(created),
+        "blueprints": items,
+        "summary": summary,
+    }
+
+
 def app_state() -> dict[str, Any]:
     """A compact snapshot of what the user is currently doing in the app.
 

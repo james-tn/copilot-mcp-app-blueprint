@@ -74,6 +74,14 @@ async def main() -> None:
             assert st.get("recentActivity"), st
             assert st.get("summary"), st
 
+            # The agent can enumerate the user's own blueprints (created + the sample).
+            lst = await call("list_blueprints")
+            assert lst.get("view") == "blueprint-list", lst
+            assert lst.get("createdCount", 0) >= 1, lst
+            created_titles = [b["title"] for b in lst["blueprints"] if b.get("createdThisSession")]
+            assert "Claims Intake" in created_titles, lst
+            assert any(b.get("isCurrent") for b in lst["blueprints"]), lst
+
             # Read the widget resource.
             widget_uri = "ui://pega-blueprint/app.html"
             content = await session.read_resource(widget_uri)
