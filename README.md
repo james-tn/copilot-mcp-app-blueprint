@@ -102,10 +102,10 @@ the widget is also advertised via `listResourceTemplates` so the host discovers 
 ├── widgets/           # React + Fluent UI widget (Vite single-file build)
 │   └── src/                 # App.tsx, views/, components/, mcp/McpBridge.tsx
 ├── appPackage/        # Declarative agent package (manifest, declarativeAgent, ai-plugin)
-├── scripts/           # build_package.sh, az_login_mfa.sh, diag_device_code.py
+├── scripts/           # deploy_azure.sh, build_package.sh, az_login_mfa.sh, diag_device_code.py
 ├── env/               # ATK env (.env.dev.example — copy to .env.dev)
 ├── m365agents.yml     # Microsoft 365 Agents Toolkit lifecycle
-├── docs/              # architecture + security/login guides
+├── docs/              # architecture, production-architecture, security/login guides
 └── archive/           # the original Adaptive Cards CEA solution (reference only)
 ```
 
@@ -137,6 +137,24 @@ cd widgets && npm run dev     # http://localhost:5173/src/
 The server is a plain container, so any host works. We use Container Apps with
 `min-replicas=1` (no cold starts — important for Copilot's MCP timeouts).
 
+**One command** (idempotent — provisions on first run, updates after):
+
+```bash
+# Prereqs: az login (./scripts/az_login_mfa.sh) and a built widget
+(cd widgets && npm ci && npm run build)
+./scripts/deploy_azure.sh
+#   RG=my-rg APP=my-mcp LOCATION=eastus2 ./scripts/deploy_azure.sh   # override defaults
+#   AUTH_MODE=generic ./scripts/deploy_azure.sh                      # enforce sign-in
+```
+
+[scripts/deploy_azure.sh](scripts/deploy_azure.sh) builds the image **in ACR**
+(no local Docker), creates the resource group + Container Apps environment,
+deploys, keeps the app warm (`min-replicas=1`), wires `PEGA_MCP_PUBLIC_URL`, and
+optionally turns on auth. It prints the MCP endpoint and a health check.
+
+<details>
+<summary>Manual equivalent (az CLI)</summary>
+
 ```bash
 cd server
 az containerapp up \
@@ -150,10 +168,16 @@ az containerapp update -g my-rg -n my-mcp-app \
   --min-replicas 1 --max-replicas 3 \
   --set-env-vars PEGA_MCP_PUBLIC_URL="https://$FQDN"
 ```
+</details>
 
 > Tip: the server is **pure-Python** on purpose. Avoid compiled deps (pillow,
 > cryptography) — they make slim/Oryx-style builds slow and fragile. The PDF
 > writer and the JWT/JWKS verification here are both hand-rolled in pure Python.
+
+> **Going to production?** See **[docs/production-architecture.md](docs/production-architecture.md)**
+> for a hardened Azure topology — secure connectivity to **real backend systems**
+> (Pega / systems of record), **Cosmos DB** for state, Front Door + APIM + WAF,
+> private networking, managed identities, observability and CI/CD.
 
 ---
 
@@ -226,6 +250,13 @@ That is the recommended pattern for an ISV. Details in
 | `PEGA_MCP_CORS_ORIGINS` | `*` | CORS allow-list |
 
 ---
+
+## Documentation
+
+- [docs/architecture.md](docs/architecture.md) — components and the MCP-Apps rendering contract
+- [docs/production-architecture.md](docs/production-architecture.md) — hardened Azure topology: backend connectivity, Cosmos DB state, Front Door/APIM/WAF, private networking, observability, CI/CD
+- [docs/security-and-login.md](docs/security-and-login.md) — the Copilot↔MCP auth design and the three modes
+- [docs/auth-generic-oauth.md](docs/auth-generic-oauth.md) · [docs/auth-runbook.md](docs/auth-runbook.md) — auth runbooks
 
 ## References
 
