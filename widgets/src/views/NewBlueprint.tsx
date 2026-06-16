@@ -3,7 +3,7 @@ import {
   tokens, Text, Button, Spinner, Textarea,
   Dropdown, Option,
 } from "@fluentui/react-components";
-import { Sparkle24Filled, CheckmarkCircle16Filled, ArrowLeft20Regular } from "@fluentui/react-icons";
+import { Sparkle24Filled, CheckmarkCircle16Filled, ArrowLeft20Regular, ErrorCircle20Regular } from "@fluentui/react-icons";
 import { Card, SectionTitle } from "../components/ui";
 import { PEGA_PURPLE } from "../theme";
 import type { CreateData } from "../types";
@@ -88,7 +88,7 @@ export function NewBlueprint({
   onCancel,
 }: {
   data: CreateData;
-  onGenerate: (args: CreateArgs) => Promise<unknown>;
+  onGenerate: (args: CreateArgs) => Promise<boolean>;
   onCancel?: () => void;
 }) {
   const cat = data.catalog;
@@ -97,6 +97,7 @@ export function NewBlueprint({
   const [purpose, setPurpose] = React.useState<string>("");
   const [description, setDescription] = React.useState<string>("");
   const [generating, setGenerating] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const subs = industry ? (cat.subIndustries[industry] ?? cat.defaultSubIndustries) : [];
   const purposes = sub ? (cat.purposes[sub] ?? cat.defaultPurposes) : [];
@@ -108,10 +109,23 @@ export function NewBlueprint({
 
   const generate = () => {
     if (!canGenerate) return;
+    setError(null);
     setGenerating(true);
-    // Parent awaits the create_blueprint tool call; when it resolves it swaps the
-    // view to the new overview. Keep the overlay until then.
-    onGenerate({ industry, sub_industry: sub, purpose, description }).catch(() => setGenerating(false));
+    // The parent generates the blueprint, then swaps the view to the new overview.
+    // If it couldn't (host quirk / timeout), recover with a retry instead of
+    // leaving the "designing…" overlay spinning forever.
+    onGenerate({ industry, sub_industry: sub, purpose, description })
+      .then((ok) => {
+        if (!ok) {
+          setGenerating(false);
+          setError("That took too long to generate. Please try again.");
+        }
+        // on success the parent unmounts this view — nothing to do here.
+      })
+      .catch(() => {
+        setGenerating(false);
+        setError("Something went wrong generating the blueprint. Please try again.");
+      });
   };
 
   if (generating) return <Generating purpose={purpose} />;
@@ -182,9 +196,27 @@ export function NewBlueprint({
         </Card>
       )}
 
+      {error && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 12px",
+            borderRadius: 8,
+            background: tokens.colorStatusDangerBackground1,
+            border: `1px solid ${tokens.colorStatusDangerBorder1}`,
+            color: tokens.colorStatusDangerForeground1,
+          }}
+        >
+          <ErrorCircle20Regular />
+          <Text size={300}>{error}</Text>
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 8 }}>
         <Button appearance="primary" icon={<Sparkle24Filled />} disabled={!canGenerate} onClick={generate}>
-          Generate
+          {error ? "Try again" : "Generate"}
         </Button>
         {onCancel && <Button appearance="subtle" onClick={onCancel}>Cancel</Button>}
       </div>

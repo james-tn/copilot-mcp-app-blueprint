@@ -40,6 +40,10 @@
         {
             "name": "get_blueprint_summary",
             "description": "Return headline blueprint metrics as data only (no widget) for quick factual answers such as 'how many workflows are there?' or 'what's the application about?'."
+        },
+        {
+            "name": "get_app_state",
+            "description": "Return what the user is CURRENTLY doing in the Blueprint app \u2014 the active blueprint, which design step they are viewing (overview/context/workflows/workflow-details/data/personas/summary), the active workflow if any, and counts. Data only (no widget). CALL THIS FIRST whenever the user refers to what's on screen ('this', 'here', 'the current/this blueprint', 'what I'm looking at', 'add a \u2026', 'change \u2026') so your answer matches the live app instead of guessing. Cheap to call."
         }
     ],
     "runtimes": [
@@ -264,6 +268,21 @@
                             "execution": {
                                 "taskSupport": "forbidden"
                             }
+                        },
+                        {
+                            "name": "get_app_state",
+                            "description": "Return what the user is CURRENTLY doing in the Blueprint app \u2014 the active blueprint, which design step they are viewing (overview/context/workflows/workflow-details/data/personas/summary), the active workflow if any, and counts. Data only (no widget). CALL THIS FIRST whenever the user refers to what's on screen ('this', 'here', 'the current/this blueprint', 'what I'm looking at', 'add a \u2026', 'change \u2026') so your answer matches the live app instead of guessing. Cheap to call.",
+                            "inputSchema": {
+                                "properties": {},
+                                "title": "get_app_stateArguments",
+                                "type": "object"
+                            },
+                            "annotations": {
+                                "readOnlyHint": true
+                            },
+                            "execution": {
+                                "taskSupport": "forbidden"
+                            }
                         }
                     ]
                 }
@@ -277,7 +296,8 @@
                 "show_data",
                 "show_personas",
                 "show_summary",
-                "get_blueprint_summary"
+                "get_blueprint_summary",
+                "get_app_state"
             ],
             "auth": {
                 "type": "OAuthPluginVault",

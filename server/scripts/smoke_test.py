@@ -63,6 +63,16 @@ async def main() -> None:
             data = await call("get_blueprint_summary")
             assert data.get("view") == "summary-data", data
 
+            # State awareness: the server tracks the live UI step across calls, so
+            # the agent (a separate session) can read it. We just navigated to
+            # 'summary' (via show_summary), and the active blueprint is the one we
+            # created, so app-state must reflect both.
+            st = await call("get_app_state")
+            assert st.get("view") == "app-state", st
+            assert st.get("phase") == "summary", st
+            assert st.get("title") == "Claims Intake", st
+            assert st.get("summary"), st
+
             # Read the widget resource.
             widget_uri = "ui://pega-blueprint/app.html"
             content = await session.read_resource(widget_uri)

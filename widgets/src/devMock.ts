@@ -196,12 +196,30 @@ const devCatalog = {
     "Cross Industry (e.g. HR, IT, Finance, etc.)": ["Facilities", "Finance", "Human Resources", "Information Technology", "Procurement", "Other"],
     "Banking": ["Retail Banking", "Asset Management", "Lending", "Payments", "Other"],
     "Insurance": ["Claims", "Underwriting", "Policy Servicing", "Other"],
+    "Healthcare": ["Patient Services", "Claims & Billing", "Care Management", "Other"],
+    "Government": ["Citizen Services", "Permits & Licensing", "Benefits", "Other"],
+    "Communications": ["Customer Service", "Order Management", "Field Service", "Other"],
+    "Manufacturing": ["Order Management", "Quality", "Supply Chain", "Other"],
+    "Energy & Utilities": ["Customer Service", "Field Service", "Metering", "Other"],
+    "Consumer Services": ["Customer Service", "Order Management", "Other"],
+    "Transportation & Logistics": ["Shipment Management", "Fleet", "Customer Service", "Other"],
   },
   defaultSubIndustries: ["Operations", "Customer Service", "Other"],
   purposes: {
     "Human Resources": ["Employee Onboarding", "Employee Self-Service", "Performance Management", "Recruiting", "Training and Development"],
     "Information Technology": ["Access Request", "Incident Management", "Service Request", "Change Management"],
+    "Finance": ["Invoice Processing", "Expense Approval", "Vendor Onboarding", "Budget Request"],
+    "Procurement": ["Purchase Requisition", "Supplier Onboarding", "Contract Approval"],
+    "Facilities": ["Workspace Request", "Maintenance Request", "Move Management"],
     "Claims": ["Claims Intake", "Claims Adjudication", "Fraud Investigation"],
+    "Underwriting": ["New Business Underwriting", "Risk Assessment", "Policy Issuance"],
+    "Lending": ["Loan Origination", "Credit Review", "Loan Servicing"],
+    "Retail Banking": ["Account Opening", "Dispute Resolution", "Card Servicing"],
+    "Citizen Services": ["Service Request", "Case Management", "Benefits Enrollment"],
+    "Permits & Licensing": ["License Application", "Permit Renewal", "Inspection Scheduling"],
+    "Patient Services": ["Patient Intake", "Appointment Scheduling", "Care Coordination"],
+    "Order Management": ["Order Fulfillment", "Returns Management", "Order Intake"],
+    "Customer Service": ["Case Management", "Complaint Handling", "Service Request"],
   },
   defaultPurposes: ["Case Intake", "Service Request", "Approval Workflow", "Investigation"],
 };
@@ -210,6 +228,44 @@ export const devOverview = {
   view: "overview", ...header("context"), context, caseTypes: caseSummaries, resumePhase: "workflow-details",
 } as unknown as ToolData;
 
+// Dev-only: remember the last created blueprint so navigation after a create stays
+// consistent (the real server keeps this as the "current" blueprint server-side).
+let devCurrent: {
+  title: string; subIndustry: string; industry: string;
+  context: any; counts: any; caseTypes: any[];
+} | null = null;
+
+function devHeader(phase: string) {
+  const h = header(phase) as any;
+  if (devCurrent) {
+    h.title = devCurrent.title;
+    h.subIndustry = devCurrent.subIndustry;
+    h.industry = devCurrent.industry;
+    h.counts = devCurrent.counts;
+  }
+  return h;
+}
+
+function devGenLifecycle(name: string, primary: boolean) {
+  const step = (n: string, type: string, i: number) => ({ id: `g${i}`, name: n, type });
+  const stages = primary
+    ? [
+        { id: "g-intake", name: "Intake", kind: "primary", processes: [], steps: [step("Receive Request", "collect", 1), step("Validate Details", "automation", 2), step("Confirm Eligibility", "decision", 3)] },
+        { id: "g-assess", name: "Assessment", kind: "primary", processes: [], steps: [step("Gather Information", "collect", 4), step("Analyze Requirements", "automation", 5), step("Policy Check", "decision", 6)] },
+        { id: "g-proc", name: "Processing", kind: "primary", steps: [], processes: [{ id: "g-exec", name: "Execution", steps: [step(`Perform ${name} Tasks`, "automation", 7), step("Coordinate Stakeholders", "collect", 8), step("Update Records", "automation", 9)] }] },
+        { id: "g-review", name: "Review & Approval", kind: "primary", processes: [], steps: [step("Quality Review", "collect", 10), step("Manager Approval", "approve", 11), step("Generate Summary", "document", 12)] },
+        { id: "g-done", name: "Completion", kind: "primary", processes: [], steps: [step("Notify Outcome", "notification", 13), step("Archive Records", "automation", 14), step("Send Survey", "notification", 15)] },
+        { id: "g-rework", name: "Rework", kind: "alternate", processes: [], steps: [step("Identify Gaps", "automation", 16), step("Request Updates", "collect", 17), step("Resubmit", "notification", 18)] },
+        { id: "g-exc", name: "Exception Handling", kind: "alternate", processes: [], steps: [step("Flag Exception", "decision", 19), step("Summarize with AI", "ai-agent", 20), step("Manager Decision", "approve", 21), step("Notify Outcome", "notification", 22)] },
+      ]
+    : [
+        { id: "g-req", name: "Request", kind: "primary", processes: [], steps: [step("Capture Request", "collect", 1), step("Validate", "automation", 2), step("Approve", "approve", 3)] },
+        { id: "g-ful", name: "Fulfilment", kind: "primary", processes: [], steps: [step("Execute Task", "automation", 4), step("Verify Completion", "collect", 5), step("Confirm", "notification", 6)] },
+        { id: "g-exc2", name: "Exception", kind: "alternate", processes: [], steps: [step("Flag Issue", "decision", 7), step("Resolve", "collect", 8), step("Notify Outcome", "notification", 9)] },
+      ];
+  return stages;
+}
+
 export function devResolve(name: string, args?: Record<string, unknown>): ToolData {
   const phase = (args?.phase as string) || "";
   const caseArg = (args?.case as string) || "";
@@ -217,16 +273,40 @@ export function devResolve(name: string, args?: Record<string, unknown>): ToolDa
   if (name === "create_blueprint") {
     const purpose = (args?.purpose as string) || "New Application";
     const sub = (args?.sub_industry as string) || "Operations";
-    const ctx = { ...context, purpose, subIndustry: sub, description: `Generated ${purpose} application for a ${sub} team.` };
-    return { view: "overview", ...header("context"), subIndustry: sub, title: purpose, context: ctx, caseTypes: caseSummaries, resumePhase: "workflows" } as unknown as ToolData;
+    const ind = ((args?.industry as string) || "Cross Industry").split(" (")[0];
+    // Mirror the server's generated shape: a primary case + 2 supporting cases.
+    const genCases = [
+      { id: "primary", name: purpose, primary: true, description: `End-to-end ${purpose} workflow coordinating intake, assessment, processing, review and completion.`, stageCount: 7, stepCount: 22, automations: 7 },
+      { id: "doc-verification", name: "Document Verification", primary: false, description: `Supporting workflow that handles document verification as part of ${purpose}.`, stageCount: 3, stepCount: 9, automations: 4 },
+      { id: "approval-management", name: "Approval Management", primary: false, description: `Supporting workflow that handles approval management as part of ${purpose}.`, stageCount: 3, stepCount: 9, automations: 4 },
+    ];
+    const ctx = { ...context, purpose, subIndustry: sub, industry: ind, description: `Generated ${purpose} application for a ${sub} team in the ${ind} industry.` };
+    const gcounts = { ...counts, caseTypes: 3, stages: 13, steps: 40, automations: 15, personas: 5 };
+    devCurrent = { title: purpose, subIndustry: sub, industry: ind, context: ctx, counts: gcounts, caseTypes: genCases };
+    return { view: "overview", ...header("context"), industry: ind, subIndustry: sub, title: purpose, counts: gcounts, context: ctx, caseTypes: genCases, resumePhase: "workflows" } as unknown as ToolData;
   }
-  if (name === "show_workflows") return { view: "workflows", ...header("workflows"), caseTypes: caseSummaries } as unknown as ToolData;
-  if (name === "show_workflow") return workflowDetails(caseArg);
-  if (name === "show_data") return { view: "data", ...header("data"), identity: "OpenID Connect (OIDC)", inboundEvents, dataObjects, integrations } as unknown as ToolData;
-  if (name === "show_personas") return { view: "personas", ...header("personas"), personas } as unknown as ToolData;
-  if (name === "show_summary") return { view: "summary", ...header("summary"), context, architecture: counts, cloudCapabilities, value, exports: devExports, sections } as unknown as ToolData;
-  if (name === "show_blueprint" && phase === "context") return { view: "context", ...header("context"), context } as unknown as ToolData;
-  if (name === "show_blueprint" && phase === "workflows") return { view: "workflows", ...header("workflows"), caseTypes: caseSummaries } as unknown as ToolData;
+  if (name === "get_app_state") {
+    const t = devCurrent?.title ?? "Employee Onboarding";
+    const s = devCurrent?.subIndustry ?? "Human Resources";
+    return { view: "app-state", phase: "overview", phaseLabel: "Overview", title: t, subIndustry: s, counts: devCurrent?.counts ?? counts, summary: `The user is viewing the 'Overview' step of the blueprint '${t}'.` } as unknown as ToolData;
+  }
+  if (name === "show_workflows") return { view: "workflows", ...devHeader("workflows"), caseTypes: devCurrent?.caseTypes ?? caseSummaries } as unknown as ToolData;
+  if (name === "show_workflow") {
+    if (devCurrent) {
+      const cl = devCurrent.caseTypes;
+      const active = cl.find((c: any) => caseArg && (c.id === caseArg || (c.name || "").toLowerCase().includes(caseArg.toLowerCase()))) ?? cl[0];
+      const stages = devGenLifecycle(active.name, !!active.primary);
+      const steps = stages.flatMap((st: any) => [...st.steps, ...st.processes.flatMap((p: any) => p.steps)]);
+      const cc = { stages: stages.length, primaryStages: stages.filter((s: any) => s.kind === "primary").length, alternateStages: stages.filter((s: any) => s.kind === "alternate").length, steps: steps.length, automations: steps.filter((s: any) => s.type === "automation" || s.type === "ai-agent").length };
+      return { view: "workflow-details", ...devHeader("workflow-details"), caseList: cl.map((c: any) => ({ id: c.id, name: c.name, primary: c.primary })), activeCaseId: active.id, case: { id: active.id, name: active.name, description: active.description, primary: active.primary, stages, counts: cc } } as unknown as ToolData;
+    }
+    return workflowDetails(caseArg);
+  }
+  if (name === "show_data") return { view: "data", ...devHeader("data"), identity: "OpenID Connect (OIDC)", inboundEvents, dataObjects, integrations } as unknown as ToolData;
+  if (name === "show_personas") return { view: "personas", ...devHeader("personas"), personas } as unknown as ToolData;
+  if (name === "show_summary") return { view: "summary", ...devHeader("summary"), context: devCurrent?.context ?? context, architecture: devCurrent?.counts ?? counts, cloudCapabilities, value, exports: devExports, sections } as unknown as ToolData;
+  if (name === "show_blueprint" && phase === "context") return { view: "context", ...devHeader("context"), context: devCurrent?.context ?? context } as unknown as ToolData;
+  if (name === "show_blueprint" && phase === "workflows") return { view: "workflows", ...devHeader("workflows"), caseTypes: devCurrent?.caseTypes ?? caseSummaries } as unknown as ToolData;
   if (name === "show_blueprint" && (phase === "workflow-details" || phase === "data" || phase === "personas" || phase === "summary")) return devResolve(`show_${phase === "workflow-details" ? "workflow" : phase}`, args);
   return devOverview;
 }

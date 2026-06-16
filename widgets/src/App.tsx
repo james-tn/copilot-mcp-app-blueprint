@@ -74,16 +74,30 @@ export function App() {
 
   const openCreate = useCallback(() => run("show_create"), [run]);
 
-  // Returns the promise so the wizard can keep its "designing…" overlay until the
-  // new blueprint is generated and the view swaps to the overview.
+  // Generate a new blueprint, then show its overview. Robust to hosts that don't
+  // return a UI tool's result to the widget: if create_blueprint doesn't hand us
+  // the new view, we fetch it via show_blueprint (the server already made the new
+  // blueprint current). Resolves to whether the view actually swapped, so the
+  // wizard can recover instead of spinning on "designing…" forever.
   const generate = useCallback(
-    (args: CreateArgs) => {
+    async (args: CreateArgs): Promise<boolean> => {
       setBusy(true);
-      return callTool("create_blueprint", args as unknown as Record<string, unknown>)
-        .then((sc) => {
-          if (sc && (sc as ToolData).view) setOverride(sc);
-        })
-        .finally(() => setBusy(false));
+      try {
+        let sc = await callTool("create_blueprint", args as unknown as Record<string, unknown>);
+        if (!sc || !(sc as ToolData).view || (sc as ToolData).view === "create") {
+          // Result not delivered (or still the wizard) — fetch the now-current blueprint.
+          sc = await callTool("show_blueprint");
+        }
+        if (sc && (sc as ToolData).view && (sc as ToolData).view !== "create") {
+          setOverride(sc);
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
+      } finally {
+        setBusy(false);
+      }
     },
     [callTool],
   );

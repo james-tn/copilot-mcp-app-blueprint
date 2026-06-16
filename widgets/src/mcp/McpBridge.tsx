@@ -37,6 +37,11 @@ export function McpBridgeProvider({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const lastHeight = useRef(0);
   const callDepth = useRef(0);
+  // When the widget initiates a tool call, some hosts deliver the result via the
+  // host `ontoolresult` event instead of (or in addition to) resolving the
+  // `callServerTool` promise — especially for UI-rendering tools. We capture that
+  // result here so the in-flight call can still resolve with it.
+  const inflightResolve = useRef<((d: ToolData | null) => void) | null>(null);
 
   const { app, isConnected } = useApp({
     appInfo: { name: appName, version: "1.0.0" },
@@ -44,10 +49,13 @@ export function McpBridgeProvider({
     onAppCreated: (created: App) => {
       // Register handlers before connect fires events.
       created.ontoolresult = (result) => {
-        // Ignore results from widget-initiated tool calls (those are handled by
-        // the caller); only host-delivered results replace the root view.
-        if (callDepth.current === 0 && result?.structuredContent) {
-          setToolData(result.structuredContent as unknown as ToolData);
+        const sc = (result?.structuredContent ?? null) as ToolData | null;
+        if (callDepth.current > 0) {
+          // A widget-initiated call is in flight — hand it this result instead of
+          // dropping it (prevents the "stuck on generating…" hang for UI tools).
+          if (sc && inflightResolve.current) inflightResolve.current(sc);
+        } else if (sc) {
+          setToolData(sc);
         }
       };
       created.onhostcontextchanged = (ctx: McpUiHostContext) => {
@@ -117,11 +125,52 @@ export function McpBridgeProvider({
     async (name: string, args?: Record<string, unknown>): Promise<ToolData | null> => {
       if (app && isConnected) {
         callDepth.current += 1;
+        // The result may arrive three ways: the callServerTool promise, the host
+        // `ontoolresult` event (captured via inflightResolve), or — if the host
+        // does neither for a UI tool — not at all. Race all of them against a
+        // timeout so this never hangs; the first non-null wins.
+        let hostResolve!: (d: ToolData | null) => void;
+        const hostResult = new Promise<ToolData | null>((res) => {
+          hostResolve = res;
+          inflightResolve.current = res;
+        });
+        const direct = (async () => {
+          try {
+            const r = await app.callServerTool({ name, arguments: args ?? {} });
+            return ((r as Record<string, any>)?.structuredContent ?? null) as ToolData | null;
+          } catch {
+            return null;
+          }
+        })();
+        let timer: ReturnType<typeof setTimeout>;
+        const timed = new Promise<ToolData | null>((res) => {
+          timer = setTimeout(() => res(null), 12000);
+        });
         try {
-          const result = await app.callServerTool({ name, arguments: args ?? {} });
-          const sc = (result as Record<string, any>)?.structuredContent;
-          return (sc ?? null) as ToolData | null;
+          // Resolve with the first NON-null result from either delivery path,
+          // or null once the timeout elapses (caller can then fall back).
+          const sc = await new Promise<ToolData | null>((resolve) => {
+            let done = false;
+            const finish = (v: ToolData | null) => {
+              if (!done && v != null) {
+                done = true;
+                resolve(v);
+              }
+            };
+            void direct.then(finish);
+            void hostResult.then(finish);
+            void timed.then(() => {
+              if (!done) {
+                done = true;
+                resolve(null);
+              }
+            });
+          });
+          return sc;
         } finally {
+          clearTimeout(timer!);
+          hostResolve(null); // settle any dangling host promise
+          inflightResolve.current = null;
           callDepth.current -= 1;
         }
       }

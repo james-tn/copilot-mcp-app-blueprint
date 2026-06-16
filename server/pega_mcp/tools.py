@@ -36,14 +36,16 @@ def _result(text: str, structured: dict[str, Any], *, ui: bool = True) -> types.
 
 # ── Tool handlers ────────────────────────────────────────────────────────────
 
+async def get_app_state() -> types.CallToolResult:
+    """Return what the user is currently doing in the app (data only, no widget)."""
+    data = store.app_state()
+    return _result(data["summary"], data, ui=False)
+
+
 async def show_create() -> types.CallToolResult:
     """Render the 'Create a Blueprint' wizard (industry → sub-industry → purpose)."""
     data = store.view_create()
-    text = (
-        "Start a new blueprint: pick an industry, a sub-industry, and an application "
-        "purpose, then Generate. I'll design the workflows, data model and personas."
-    )
-    return _result(text, data)
+    return _result("Opening the new-blueprint wizard in the app.", data)
 
 
 async def create_blueprint(industry: str = "", sub_industry: str = "",
@@ -52,17 +54,16 @@ async def create_blueprint(industry: str = "", sub_industry: str = "",
     if not purpose.strip():
         data = store.view_create()
         return _result(
-            "To create a blueprint I need at least an application purpose (e.g. 'Access Request'). "
-            "Pick an industry, sub-industry and purpose, then Generate.",
+            "I need an application purpose to generate (e.g. 'Access Request'). "
+            "The wizard is open in the app.",
             data,
         )
     bp = store.create_blueprint(industry, sub_industry, purpose, description)
     data = store.view_overview(bp["id"])
     c = store.blueprint_counts(bp)
     text = (
-        f"Created blueprint '{bp['title']}' ({bp['subIndustry']} · {bp['id']}): "
-        f"{c['caseTypes']} workflows, {c['stages']} stages, {c['steps']} steps, "
-        f"{c['dataObjects']} data objects and {c['personas']} personas. Showing the overview."
+        f"Created '{bp['title']}' ({bp['subIndustry']}) — {c['caseTypes']} workflows, "
+        f"{c['steps']} steps, {c['personas']} personas. Its overview is open in the app."
     )
     return _result(text, data)
 
@@ -85,12 +86,7 @@ async def show_blueprint(phase: str = "") -> types.CallToolResult:
     else:
         data = store.view_overview()
     bp = store.get()
-    c = store.blueprint_counts(bp)
-    text = (
-        f"{bp['title']} ({bp['subIndustry']} · {bp['id']}). "
-        f"{c['caseTypes']} workflows, {c['stages']} stages, {c['steps']} steps, "
-        f"{c['personas']} personas. Showing the {data['view']} view."
-    )
+    text = f"Showing the {data['view']} step of '{bp['title']}' in the app."
     return _result(text, data)
 
 
@@ -98,7 +94,7 @@ async def show_workflows() -> types.CallToolResult:
     """Render the workflows (Pega Case Types) generated for the application."""
     data = store.view_workflows()
     names = ", ".join(c["name"] for c in data["caseTypes"])
-    text = f"{len(data['caseTypes'])} workflows (case types): {names}."
+    text = f"{len(data['caseTypes'])} workflows shown in the app: {names}."
     return _result(text, data)
 
 
@@ -110,8 +106,8 @@ async def show_workflow(case: str = "") -> types.CallToolResult:
     cs = data["case"]
     cc = cs["counts"]
     text = (
-        f"{cs['name']} lifecycle: {cc['primaryStages']} primary + {cc['alternateStages']} "
-        f"alternate stages, {cc['steps']} steps ({cc['automations']} automated)."
+        f"'{cs['name']}' lifecycle is open in the app: {cc['stages']} stages, "
+        f"{cc['steps']} steps ({cc['automations']} automated)."
     )
     return _result(text, data)
 
@@ -120,10 +116,9 @@ async def show_data() -> types.CallToolResult:
     """Render the Data & Integrations: data objects, integrations, inbound events, identity."""
     data = store.view_data()
     local = data["dataObjects"]["local"]
-    names = ", ".join(o["name"] for o in local)
     text = (
-        f"{len(local)} data objects ({names}); {len(data['integrations'])} integrations; "
-        f"identity via {data['identity']}."
+        f"Data & Integrations shown in the app: {len(local)} data objects, "
+        f"{len(data['integrations'])} integrations, identity via {data['identity']}."
     )
     return _result(text, data)
 
@@ -132,7 +127,7 @@ async def show_personas() -> types.CallToolResult:
     """Render the worker personas involved in the workflows."""
     data = store.view_personas()
     names = ", ".join(p["name"] for p in data["personas"])
-    text = f"{len(data['personas'])} personas: {names}."
+    text = f"{len(data['personas'])} personas shown in the app: {names}."
     return _result(text, data)
 
 
@@ -142,10 +137,9 @@ async def show_summary() -> types.CallToolResult:
     a = data["architecture"]
     v = data["value"]
     text = (
-        f"Summary of {data['title']}: {a['caseTypes']} workflows, {a['stages']} stages, "
-        f"{a['steps']} steps, {a['dataObjects']} data objects, {a['personas']} personas. "
-        f"Illustrative delivery ~{v['blueprintDays']} days with Blueprint vs ~{v['traditionalMonths']} "
-        f"months hand-built. Download as PDF, Excel, or an importable Blueprint file."
+        f"Summary of '{data['title']}' is open in the app: {a['caseTypes']} workflows, "
+        f"{a['steps']} steps, {a['personas']} personas; ~{v['blueprintDays']} days with "
+        f"Blueprint vs ~{v['traditionalMonths']} months hand-built. Export available there."
     )
     return _result(text, data)
 
@@ -226,6 +220,14 @@ TOOL_SPECS: list[dict[str, Any]] = [
      "description": (
          "Return headline blueprint metrics as data only (no widget) for quick factual answers such as "
          "'how many workflows are there?' or 'what's the application about?'.")},
+    {"name": "get_app_state", "handler": get_app_state, "ui": False,
+     "description": (
+         "Return what the user is CURRENTLY doing in the Blueprint app — the active blueprint, which "
+         "design step they are viewing (overview/context/workflows/workflow-details/data/personas/"
+         "summary), the active workflow if any, and counts. Data only (no widget). CALL THIS FIRST "
+         "whenever the user refers to what's on screen ('this', 'here', 'the current/this blueprint', "
+         "'what I'm looking at', 'add a …', 'change …') so your answer matches the live app instead "
+         "of guessing. Cheap to call.")},
 ]
 
 PROMPT_SPECS: list[dict[str, Any]] = [

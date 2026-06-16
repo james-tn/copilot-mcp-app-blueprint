@@ -14,8 +14,25 @@ from .settings import get_settings
 
 _store: dict[str, dict[str, Any]] = {}
 _current_id: str | None = None
+# The app's *live* UI state — the "shared body part" the agent stays aware of.
+# Every view builder updates this so a separate MCP session (the agent) can ask
+# what the user is currently looking at via ``app_state()`` / get_app_state.
+_current_phase: str = "overview"
+_current_case: str | None = None
 
 _AUTOMATED_TYPES = {"automation", "ai-agent"}
+
+# Friendly labels for each design step (used in agent-facing state summaries).
+_PHASE_LABELS = {
+    "overview": "Overview",
+    "create": "Create a Blueprint (new application wizard)",
+    "context": "Application Context",
+    "workflows": "Workflows",
+    "workflow-details": "Workflow Details (case lifecycle)",
+    "data": "Data & Integrations",
+    "personas": "Personas",
+    "summary": "Summary",
+}
 
 
 def _public_base() -> str:
@@ -24,6 +41,14 @@ def _public_base() -> str:
     if s.public_url:
         return s.public_url.rstrip("/")
     return f"http://localhost:{s.port}"
+
+
+def _set_current(phase: str, case_id: str | None = None) -> None:
+    """Record the live UI state so the agent (a different session) stays in sync."""
+    global _current_phase, _current_case
+    _current_phase = phase
+    _current_case = case_id
+
 
 
 def _ensure_seed() -> None:
@@ -56,7 +81,48 @@ def create_blueprint(industry: str, sub_industry: str, purpose: str,
     bp = data.generate_blueprint(industry, sub_industry, purpose, description)
     _store[bp["id"]] = bp
     _current_id = bp["id"]
+    _set_current("overview")
     return bp
+
+
+def app_state() -> dict[str, Any]:
+    """A compact snapshot of what the user is currently doing in the app.
+
+    This is the agent's window into the live UI. Because the widget calls the
+    same server (shared in-memory state) as it navigates, the agent can read this
+    to ground its replies in what the user is actually looking at — instead of
+    guessing or over-explaining.
+    """
+    bp = get()
+    c = blueprint_counts(bp)
+    phase = _current_phase
+    case_name = None
+    if _current_case:
+        case = get_case(bp, _current_case)
+        case_name = case["name"] if case else None
+    where = _PHASE_LABELS.get(phase, phase)
+    if case_name:
+        where = f"{where} → {case_name}"
+    summary = (
+        f"The user is viewing the '{where}' step of the blueprint "
+        f"'{bp['title']}' ({bp['subIndustry']} · {bp['id']}). "
+        f"It has {c['caseTypes']} workflows, {c['stages']} stages, {c['steps']} steps, "
+        f"{c['dataObjects']} data objects and {c['personas']} personas."
+    )
+    return {
+        "view": "app-state",
+        "blueprintId": bp["id"],
+        "title": bp["title"],
+        "industry": bp["industry"],
+        "subIndustry": bp["subIndustry"],
+        "purpose": bp["purpose"],
+        "phase": phase,
+        "phaseLabel": _PHASE_LABELS.get(phase, phase),
+        "activeCase": case_name,
+        "counts": c,
+        "summary": summary,
+    }
+
 
 
 # ── Lifecycle helpers ────────────────────────────────────────────────────────
@@ -205,11 +271,13 @@ def _case_summary(c: dict[str, Any]) -> dict[str, Any]:
 
 def view_create() -> dict[str, Any]:
     """The create-a-blueprint wizard payload (industry/sub-industry/purpose catalog)."""
+    _set_current("create")
     return {"view": "create", "catalog": data.catalog()}
 
 
 def view_overview(blueprint_id: str | None = None) -> dict[str, Any]:
     bp = get(blueprint_id)
+    _set_current("overview")
     return {
         "view": "overview",
         **_header(bp, "context"),
@@ -221,11 +289,13 @@ def view_overview(blueprint_id: str | None = None) -> dict[str, Any]:
 
 def view_context(blueprint_id: str | None = None) -> dict[str, Any]:
     bp = get(blueprint_id)
+    _set_current("context")
     return {"view": "context", **_header(bp, "context"), "context": _context_block(bp)}
 
 
 def view_workflows(blueprint_id: str | None = None) -> dict[str, Any]:
     bp = generate_case_types(blueprint_id)
+    _set_current("workflows")
     return {
         "view": "workflows", **_header(bp, "workflows"),
         "caseTypes": [_case_summary(c) for c in bp["caseTypes"]],
@@ -236,8 +306,10 @@ def view_workflow_details(blueprint_id: str | None, case_id: str | None = None) 
     bp = generate_case_types(blueprint_id)
     case = get_case(bp, case_id)
     if not case:
+        _set_current("workflow-details")
         return {"view": "error", **_header(bp, "workflow-details"),
                 "message": f"No workflow found matching '{case_id}'."}
+    _set_current("workflow-details", case["id"])
     return {
         "view": "workflow-details", **_header(bp, "workflow-details"),
         "caseList": [{"id": c["id"], "name": c["name"], "primary": c.get("primary", False)}
@@ -254,6 +326,7 @@ def view_workflow_details(blueprint_id: str | None, case_id: str | None = None) 
 
 def view_data(blueprint_id: str | None = None) -> dict[str, Any]:
     bp = get(blueprint_id)
+    _set_current("data")
     objs = bp["dataObjects"]
     return {
         "view": "data", **_header(bp, "data"),
@@ -269,11 +342,13 @@ def view_data(blueprint_id: str | None = None) -> dict[str, Any]:
 
 def view_personas(blueprint_id: str | None = None) -> dict[str, Any]:
     bp = generate_personas(blueprint_id)
+    _set_current("personas")
     return {"view": "personas", **_header(bp, "personas"), "personas": bp["personas"]}
 
 
 def view_summary(blueprint_id: str | None = None) -> dict[str, Any]:
     bp = get(blueprint_id)
+    _set_current("summary")
     base = _public_base()
     exports = {
         "pdf": f"{base}/export/{bp['id']}/pdf",
