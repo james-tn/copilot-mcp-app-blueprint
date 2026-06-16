@@ -24,13 +24,14 @@ governed, scalable, and observable.
 3. [Component mapping (POC → production)](#3-component-mapping-poc--production)
 4. [Backend system connectivity](#4-backend-system-connectivity)
 5. [State and data with Cosmos DB](#5-state-and-data-with-cosmos-db)
-6. [Security](#6-security)
-7. [Scalability and performance](#7-scalability-and-performance)
-8. [Observability](#8-observability)
-9. [Resilience and DR](#9-resilience-and-dr)
-10. [CI/CD and IaC](#10-cicd-and-iac)
-11. [Cost notes](#11-cost-notes)
-12. [What to change in this repo](#12-what-to-change-in-this-repo)
+6. [Personalization and collaboration with Microsoft 365](#6-personalization-and-collaboration-with-microsoft-365)
+7. [Security](#7-security)
+8. [Scalability and performance](#8-scalability-and-performance)
+9. [Observability](#9-observability)
+10. [Resilience and DR](#10-resilience-and-dr)
+11. [CI/CD and IaC](#11-cicd-and-iac)
+12. [Cost notes](#12-cost-notes)
+13. [What to change in this repo](#13-what-to-change-in-this-repo)
 
 ---
 
@@ -331,6 +332,7 @@ flowchart LR
 | Secrets | env vars / Key Vault optional | **Azure Key Vault** (referenced by managed identity; per-tenant backend creds) |
 | **State / data** | in-memory dict | **Azure Cosmos DB** (blueprints, sessions, audit) + **Redis** (cache) + **Blob** (exports) |
 | **Backend integration** | seeded demo data | **Private Endpoints** / per-tenant connectivity to Pega and SoR; **on-prem data gateway**; **ExpressRoute/VPN** |
+| **M365 personalization** | seeded sample personas/data | **WorkIQ** + **Microsoft Graph** (OBO, as the user) to ground blueprints in the tenant's real people, processes, and systems — and to collaborate back into Teams/Outlook/SharePoint/Planner (see §6) |
 | Networking | public | **VNet-integrated** Container Apps, **Private Endpoints**, **Private DNS**, NSGs, no public data plane |
 | Observability | container logs | **Application Insights** (OpenTelemetry traces), **Log Analytics**, **Azure Monitor** alerts, per-tenant dashboards |
 | Security posture | — | **Microsoft Defender for Cloud** (CSPM + container/CWPP), **Microsoft Sentinel** (SIEM) |
@@ -451,7 +453,171 @@ the blueprint payloads this server already produces.
 
 ---
 
-## 6. Security
+## 6. Personalization and collaboration with Microsoft 365
+
+The POC seeds every blueprint from one generic sample. The single biggest
+experience upgrade is to **ground the blueprint in the customer's own world** —
+their real processes, people, systems, and decisions — using the **Microsoft 365
+data the signed-in user already has access to**. Because the agent runs *inside*
+M365 Copilot, it can reach that context two complementary ways:
+
+- **WorkIQ** (`ask_work_iq`) — natural-language **workplace intelligence** over the
+  user's emails, meetings, Teams chats, documents, and people, synthesized from
+  the **Microsoft Graph semantic index**. One question in, a grounded answer out.
+- **Microsoft Graph** (direct REST) — **structured, deterministic** reads/writes:
+  profile, org chart, People, calendar, presence, files, mail, Teams, Planner.
+
+> **The key property: both run *on behalf of the signed-in user* (OBO) and inherit
+> that user's existing M365 permissions.** The agent can never see more than the
+> user already can — personalization with **no new data-access surface** and least
+> privilege by construction. It also fits the multi-tenant model (§2) for free:
+> the user's token already carries `tid`, so every M365 read is tenant-scoped.
+
+### 6.1 Personalization — grounding a blueprint in the customer's reality
+
+Instead of starting from a banking sample, the agent asks the organization's own
+data "how do *we* do this today?" and proposes a starting point built from real
+context.
+
+```mermaid
+flowchart LR
+    U["User starts a blueprint<br/>in M365 Copilot"]:::ext
+    MCP["MCP server<br/>(tenant-aware)"]:::compute
+
+    subgraph M365["Microsoft 365 — accessed as the signed-in user (OBO)"]
+      direction TB
+      WIQ["WorkIQ · ask_work_iq<br/>synthesized org intelligence"]:::m365
+      GRAPH["Microsoft Graph<br/>profile · org chart · people<br/>presence · files · mail · Teams"]:::m365
+      IDX[("Graph semantic index<br/>emails · meetings · chats<br/>SharePoint · OneDrive")]:::data
+      WIQ --> IDX
+    end
+
+    U -->|"tool call + token (tid, oid)"| MCP
+    MCP -->|"OBO: 'how do we do card servicing today?'"| WIQ
+    MCP -->|"OBO: org chart · people · presence"| GRAPH
+    WIQ -->|"grounded process context"| MCP
+    GRAPH -->|"real personas + SMEs"| MCP
+    MCP -->|"AI-suggested draft (with provenance)<br/>— user confirms before it is saved"| U
+
+    classDef ext fill:#f3f2f1,stroke:#605e5c,color:#000
+    classDef compute fill:#e6e0ff,stroke:#5a1faa,color:#000
+    classDef m365 fill:#dceefb,stroke:#0a66c2,color:#000
+    classDef data fill:#d8f5e3,stroke:#107c41,color:#000
+```
+
+What each part of the blueprint can be personalized from:
+
+| Blueprint element | M365 source (WorkIQ / Graph, as the user) | What it personalizes |
+| --- | --- | --- |
+| **Purpose / description** | WorkIQ over SharePoint SOPs, emails, meeting notes | Real intent and scope instead of a generic stub |
+| **Case types & stages** | WorkIQ over the existing **process doc / PRD**; meeting **decisions & action items** | Stages mirror the org's *actual* process, not a template |
+| **Personas** | **Graph** `/me`, `/me/manager`, `/me/directReports`, org chart, People API; WorkIQ "who owns X?" | Real roles, departments, reporting lines, named SMEs |
+| **Data objects / systems of record** | WorkIQ "what systems do we use for card accounts?" → Workday/ServiceNow/SAP cited in docs | The SoR list reflects the tenant's real landscape |
+| **Approvers / reviewers** | **Graph** presence + People; WorkIQ "who approves limit changes?" | The right approver assigned to each stage |
+| **Integrations / inbound events** | WorkIQ over architecture docs; Graph/Copilot **connectors** index | Surfaces the org's real integration points |
+
+**Guardrail — intelligence, not authority (ties to the provenance work).** WorkIQ
+and Graph output are *suggestions the user confirms*, never silently authoritative.
+Surface them as "Based on your team's docs, here's a suggested starting point,"
+show the **source**, and mark each field **AI-suggested vs user-confirmed** using
+the same `origin`/provenance pattern the server already tracks. Nothing derived
+from org data is written into the durable blueprint until the user accepts it.
+
+### 6.2 People and the org graph → real personas
+
+- **Graph** `/me`, manager chain, direct reports, `memberOf` groups → seed personas
+  with **real titles, departments, and reporting structure** (no more "Persona 1").
+- **People API** (`/me/people`) ranks the colleagues most relevant to the user →
+  suggested collaborators and SMEs for a case type.
+- **Presence API** → who is **available right now** to review or approve a stage.
+- **Profile photos + display names** rendered in the widget for a recognizable,
+  personalized UI.
+
+### 6.3 Beyond reading — collaboration and action across M365
+
+A few more things this solution can take advantage of: the blueprint shouldn't
+stop at design — it can flow into the tools the team already lives in.
+
+```mermaid
+flowchart LR
+    BP["Blueprint<br/>(in the widget)"]:::compute
+    OUT["MCP write tools<br/>(user-initiated, allow-listed, OBO)"]:::compute
+    BP --> OUT
+    OUT -->|"email summary / PDF · approval requests"| MAIL["Outlook · Mail.Send"]:::m365
+    OUT -->|"post for review · Adaptive Card approvals · review meeting"| TEAMS["Microsoft Teams"]:::m365
+    OUT -->|"persist export · version history · co-author"| SP["SharePoint / OneDrive"]:::m365
+    OUT -->|"stages/steps → tasks"| PLAN["Planner / To Do / Project"]:::m365
+    OUT -->|"live, in-sync component"| LOOP["Microsoft Loop"]:::m365
+    OUT -->|"schema · flow skeleton"| PP["Power Platform<br/>Dataverse · Power Automate"]:::m365
+    OUT -->|"labels · DLP"| PURV["Microsoft Purview"]:::data
+
+    classDef compute fill:#e6e0ff,stroke:#5a1faa,color:#000
+    classDef m365 fill:#dceefb,stroke:#0a66c2,color:#000
+    classDef data fill:#d8f5e3,stroke:#107c41,color:#000
+```
+
+- **Outlook / Mail** (`Mail.Send`) — email the generated summary/PDF to
+  stakeholders; send **stage-owner approval requests**; "share this with my manager."
+- **Microsoft Teams** — post the blueprint to a **channel** for review
+  (`ChannelMessage.Send`); **Adaptive Card** approve/return a stage inline; spin up
+  a **review meeting**, then pull its **transcript** back through WorkIQ as new
+  requirements (a closed feedback loop); co-design in a group chat with the agent.
+- **SharePoint / OneDrive** (`Files.ReadWrite`) — persist the **PDF/Excel export**
+  (already built in-process) to the team's library with **version history and
+  co-authoring** instead of a transient download; also the richest **grounding**
+  source for §6.1.
+- **Planner / To Do / Project** — turn blueprint **stages/steps into a plan or
+  project tasks** so the blueprint becomes an actionable delivery backlog.
+- **Microsoft Loop** — embed the live blueprint as a **Loop component** that stays
+  in sync across chats, docs, and meetings.
+- **Graph / Copilot connectors** — index the customer's **external SoR** (their
+  Pega, ticketing, CRM) into the **Graph semantic index**, so WorkIQ grounding
+  spans line-of-business data, not just M365.
+- **Power Platform** — export data objects → a **Dataverse table schema**; export a
+  case type → a **Power Automate** flow skeleton, bridging design to a runnable app.
+- **Microsoft Purview** — apply **sensitivity labels** to exported blueprints and
+  enforce **DLP** when org data flows into them (compliance for regulated tenants).
+- **Viva Goals** — align a blueprint to the team's **OKRs**; Viva Insights for
+  adoption analytics.
+
+### 6.4 Architecture and implementation notes
+
+- **New MCP tools**, each a thin wrapper over WorkIQ/Graph behind the *same tool
+  seam* the server already uses — e.g. `ground_blueprint(context_query)`,
+  `suggest_personas_from_org()`, `share_to_teams(id)`, `email_summary(id, to)`,
+  `save_to_sharepoint(id)`, `create_plan(id)`. **Reads** ground the design;
+  **writes** are **explicit, user-initiated, and allow-listed** (the prompt-
+  injection guard in §7 applies — never let a tool result trigger a silent send).
+- **Identity / OBO** — all M365 calls use the **On-Behalf-Of** flow: exchange the
+  user's Copilot token for a Graph token so every read/write happens **as the
+  user**, honoring their permissions and the tenant's Conditional Access. Avoid
+  app-only Graph for personalization — it would over-privilege the service.
+- **Consent / scopes** (multi-tenant, §2.5) — add **delegated** Graph scopes
+  **incrementally**: start read-only and user-consentable (`User.Read`,
+  `People.Read`, `Calendars.Read`, `Files.Read`), and add write scopes
+  (`Mail.Send`, `Files.ReadWrite`, `ChannelMessage.Send`) **only for features a
+  tenant turns on**. Keep them optional so the core agent works without them; most
+  warrant a one-time **admin consent**.
+- **WorkIQ vs direct Graph** — use **WorkIQ for fuzzy, synthesized, cross-source**
+  questions ("how do we do X today?"); use **direct Graph for structured,
+  deterministic** reads/writes (org chart, send mail). They are complementary, not
+  either/or.
+- **Latency / async** — WorkIQ synthesis can be slow, so run grounding on the
+  **async job pattern** from §4: create the blueprint immediately with sample data,
+  kick off grounding in a **KEDA worker**, and let the widget refresh with
+  personalized suggestions when ready — keeping the synchronous tool call inside
+  Copilot's timeout.
+- **Privacy / data minimization** — treat M365-derived content as **transient
+  grounding**: pull only what's needed, show provenance, and **don't persist PII**
+  into the durable store unless the user accepts it (then label it via Purview).
+  **Audit** every M365 read/write to the `audit` container with the user's `oid` +
+  `tid`.
+- **Caching** — cache org-chart/persona lookups in **Redis** (per user, short TTL)
+  to avoid repeat Graph calls on every tool invocation.
+
+---
+
+## 7. Security
 
 Defense in depth, mapped to Microsoft products:
 
@@ -499,7 +665,7 @@ Defense in depth, mapped to Microsoft products:
 
 ---
 
-## 7. Scalability and performance
+## 8. Scalability and performance
 
 - **KEDA autoscaling** on Container Apps: scale on concurrent HTTP requests and on
   queue depth for the async workers. Keep **`min-replicas ≥ 1`** (warm) — the one
@@ -517,7 +683,7 @@ Defense in depth, mapped to Microsoft products:
 
 ---
 
-## 8. Observability
+## 9. Observability
 
 - **Application Insights** with **OpenTelemetry** from the FastMCP/uvicorn app:
   distributed traces that stitch *Copilot → APIM → MCP → backend → Cosmos*, so you
@@ -531,7 +697,7 @@ Defense in depth, mapped to Microsoft products:
 
 ---
 
-## 9. Resilience and DR
+## 10. Resilience and DR
 
 - **Multi-zone** by default; **multi-region** for critical workloads (Front Door
   routes, Cosmos multi-region writes, geo-redundant Blob).
@@ -545,7 +711,7 @@ Defense in depth, mapped to Microsoft products:
 
 ---
 
-## 10. CI/CD and IaC
+## 11. CI/CD and IaC
 
 - **Infrastructure as Code with Bicep** (or Terraform): VNet, Container Apps env,
   Cosmos, Key Vault, APIM, Front Door, Private Endpoints, RBAC — all reproducible.
@@ -562,7 +728,7 @@ Defense in depth, mapped to Microsoft products:
 
 ---
 
-## 11. Cost notes
+## 12. Cost notes
 
 - **Container Apps**: pay for the warm `min-replicas` + per-request scale. One
   small always-on replica is inexpensive and removes cold starts.
@@ -576,7 +742,7 @@ Defense in depth, mapped to Microsoft products:
 
 ---
 
-## 12. What to change in this repo
+## 13. What to change in this repo
 
 1. **State**: replace the in-memory `_store`/`_current_id` in
    [server/pega_mcp/store.py](../server/pega_mcp/store.py) with a Cosmos DB
@@ -600,6 +766,11 @@ Defense in depth, mapped to Microsoft products:
    (Partner Center); add subscription/metering webhooks for tenant lifecycle.
 8. **Pipeline**: codify everything in Bicep + a CI/CD pipeline; add App
    Insights/OpenTelemetry and Defender/Sentinel.
+9. **M365 personalization** (§6): add WorkIQ + Microsoft Graph tools behind the
+   existing tool seam to ground blueprints in the tenant's real people/process/
+   systems and to collaborate back into Teams/Outlook/SharePoint/Planner — all via
+   **OBO** (as the user), with incremental delegated scopes and provenance on every
+   AI-suggested field.
 
 See [architecture.md](architecture.md) for the MCP-Apps rendering contract and
 [security-and-login.md](security-and-login.md) for the Copilot↔MCP auth design.
