@@ -207,7 +207,8 @@
                 "get_blueprint_summary"
             ],
             "auth": {
-                "type": "None"
+                "type": "OAuthPluginVault",
+                "reference_id": "${{OAUTH_REGISTRATION_ID}}"
             }
         }
     ]
