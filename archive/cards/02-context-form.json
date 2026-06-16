@@ -1,0 +1,72 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "Step 1 of 6 · Context", "isSubtle": true, "size": "Small", "weight": "Bolder", "color": "Accent" },
+    { "type": "TextBlock", "text": "Let's review your context", "size": "Large", "weight": "Bolder", "wrap": true },
+    { "type": "TextBlock", "text": "What is your business and objective?", "wrap": true, "isSubtle": true, "spacing": "None" },
+
+    { "type": "TextBlock", "text": "Organization name", "weight": "Bolder", "size": "Small", "spacing": "Medium" },
+    { "type": "Input.Text", "id": "orgName", "value": "Microsoft", "placeholder": "Organization name" },
+
+    { "type": "TextBlock", "text": "Organization website", "weight": "Bolder", "size": "Small", "spacing": "Small" },
+    { "type": "Input.Text", "id": "website", "value": "microsoft.com", "placeholder": "example.com" },
+
+    { "type": "TextBlock", "text": "Engagement objective", "weight": "Bolder", "size": "Small", "spacing": "Small" },
+    {
+      "type": "Input.ChoiceSet",
+      "id": "objective",
+      "value": "arpu",
+      "choices": [
+        { "title": "Increase ARPU/ARPA / Maximize customer lifetime value", "value": "arpu" },
+        { "title": "Acquire new customers", "value": "acquire" },
+        { "title": "Reduce churn / Retain", "value": "retain" },
+        { "title": "Improve onboarding", "value": "onboard" }
+      ]
+    },
+
+    { "type": "TextBlock", "text": "Objective details for your messaging", "weight": "Bolder", "size": "Small", "spacing": "Small" },
+    {
+      "type": "Input.Text",
+      "id": "objectiveDetails",
+      "isMultiline": true,
+      "value": "Maximize revenue potential from the existing customer base by identifying expansion opportunities and preventing value leakage. Cross-sell and upsell premium services, device upgrades, add-on features, and service tier migrations. Target 25-35% increase in ARPU while keeping CSAT above 8.5."
+    },
+
+    {
+      "type": "ColumnSet",
+      "spacing": "Small",
+      "columns": [
+        {
+          "type": "Column",
+          "width": "stretch",
+          "items": [
+            { "type": "TextBlock", "text": "Language", "weight": "Bolder", "size": "Small" },
+            { "type": "Input.ChoiceSet", "id": "language", "value": "en", "choices": [
+              { "title": "English", "value": "en" },
+              { "title": "Spanish", "value": "es" },
+              { "title": "French", "value": "fr" }
+            ] }
+          ]
+        },
+        {
+          "type": "Column",
+          "width": "stretch",
+          "items": [
+            { "type": "TextBlock", "text": "Location", "weight": "Bolder", "size": "Small" },
+            { "type": "Input.ChoiceSet", "id": "location", "value": "us", "choices": [
+              { "title": "United States", "value": "us" },
+              { "title": "United Kingdom", "value": "uk" },
+              { "title": "Australia", "value": "au" }
+            ] }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    { "type": "Action.Submit", "title": "Confirm & continue", "style": "positive", "data": { "verb": "saveContext", "blueprintId": "CDHBP-335041" } },
+    { "type": "Action.Submit", "title": "Upload supporting content", "data": { "verb": "uploadContent", "blueprintId": "CDHBP-335041" } }
+  ]
+}

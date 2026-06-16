@@ -1,0 +1,56 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "Step 6 of 6 · Summary", "isSubtle": true, "size": "Small", "weight": "Bolder", "color": "Accent" },
+    { "type": "TextBlock", "text": "Increase ARPU/ARPA / Maximize customer lifetime value", "size": "Large", "weight": "Bolder", "wrap": true },
+    { "type": "TextBlock", "text": "Communications · CDHBP-335041", "isSubtle": true, "spacing": "None", "size": "Small" },
+    { "type": "TextBlock", "text": "Your blueprint is ready. Review the highlights, export, or share.", "wrap": true, "spacing": "Small" },
+
+    {
+      "type": "ColumnSet",
+      "spacing": "Medium",
+      "columns": [
+        { "type": "Column", "width": "stretch", "style": "emphasis", "items": [
+          { "type": "TextBlock", "text": "9", "size": "ExtraLarge", "weight": "Bolder", "horizontalAlignment": "Center", "color": "Accent" },
+          { "type": "TextBlock", "text": "Actions", "horizontalAlignment": "Center", "isSubtle": true, "size": "Small", "spacing": "None" }
+        ] },
+        { "type": "Column", "width": "stretch", "style": "emphasis", "items": [
+          { "type": "TextBlock", "text": "18", "size": "ExtraLarge", "weight": "Bolder", "horizontalAlignment": "Center", "color": "Accent" },
+          { "type": "TextBlock", "text": "Messages", "horizontalAlignment": "Center", "isSubtle": true, "size": "Small", "spacing": "None" }
+        ] },
+        { "type": "Column", "width": "stretch", "style": "emphasis", "items": [
+          { "type": "TextBlock", "text": "1", "size": "ExtraLarge", "weight": "Bolder", "horizontalAlignment": "Center", "color": "Accent" },
+          { "type": "TextBlock", "text": "Channels", "horizontalAlignment": "Center", "isSubtle": true, "size": "Small", "spacing": "None" }
+        ] }
+      ]
+    },
+
+    { "type": "TextBlock", "text": "Who is this for?", "weight": "Bolder", "spacing": "Medium" },
+    { "type": "FactSet", "facts": [
+      { "title": "Organization", "value": "Microsoft" },
+      { "title": "Website", "value": "microsoft.com" },
+      { "title": "Industry", "value": "Communications" },
+      { "title": "Outcomes", "value": "Grow, Retain" },
+      { "title": "Channels", "value": "Mobile, Email" }
+    ] },
+
+    { "type": "TextBlock", "text": "Potential value of Pega Customer Decision Hub", "weight": "Bolder", "spacing": "Medium", "wrap": true },
+    { "type": "TextBlock", "text": "How many customers does your organization have?", "size": "Small", "isSubtle": true, "wrap": true },
+    { "type": "Input.Number", "id": "numCustomers", "value": 10000000, "min": 0 }
+  ],
+  "actions": [
+    { "type": "Action.Execute", "title": "Calculate value", "verb": "calculateValue", "data": { "blueprintId": "CDHBP-335041" } },
+    { "type": "Action.Execute", "title": "Download PDF", "verb": "exportBlueprint", "data": { "blueprintId": "CDHBP-335041", "format": "pdf" } },
+    { "type": "Action.Execute", "title": "Download Excel", "verb": "exportBlueprint", "data": { "blueprintId": "CDHBP-335041", "format": "excel" } },
+    { "type": "Action.ShowCard", "title": "Share", "card": {
+      "type": "AdaptiveCard",
+      "body": [
+        { "type": "TextBlock", "text": "Share with (comma-separated emails)", "size": "Small", "weight": "Bolder" },
+        { "type": "Input.Text", "id": "recipients", "placeholder": "maria@contoso.com, sam@contoso.com" }
+      ],
+      "actions": [ { "type": "Action.Submit", "title": "Send", "style": "positive", "data": { "verb": "shareBlueprint", "blueprintId": "CDHBP-335041" } } ]
+    } }
+  ]
+}

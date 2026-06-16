@@ -1,0 +1,74 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "ColumnSet",
+      "columns": [
+        {
+          "type": "Column",
+          "width": "stretch",
+          "items": [
+            { "type": "TextBlock", "text": "Pro Setup Upgrade", "weight": "Bolder", "size": "Medium", "wrap": true },
+            { "type": "TextBlock", "text": "Mobile · Device Purchase · Grow", "isSubtle": true, "size": "Small", "spacing": "None" }
+          ]
+        },
+        {
+          "type": "Column",
+          "width": "auto",
+          "verticalContentAlignment": "Center",
+          "items": [
+            { "type": "TextBlock", "text": "TREATMENT", "size": "Small", "weight": "Bolder", "color": "Accent" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Image",
+      "url": "https://picsum.photos/seed/surfacepro/600/300",
+      "size": "Stretch",
+      "altText": "Surface Pro with keyboard and pen on a desk",
+      "spacing": "Medium"
+    },
+    { "type": "TextBlock", "text": "Complete your Surface Pro", "size": "Large", "weight": "Bolder", "wrap": true, "spacing": "Medium" },
+    {
+      "type": "TextBlock",
+      "wrap": true,
+      "spacing": "Small",
+      "text": "Add Surface Pro Keyboard and Surface Slim Pen to unlock a more productive, flexible setup wherever your day takes you."
+    },
+    {
+      "type": "ActionSet",
+      "spacing": "Medium",
+      "actions": [
+        { "type": "Action.OpenUrl", "title": "Shop Pro Bundle", "url": "https://example.com/shop", "style": "positive" }
+      ]
+    }
+  ],
+  "actions": [
+    { "type": "Action.ShowCard", "title": "Edit", "card": {
+      "type": "AdaptiveCard",
+      "body": [
+        { "type": "TextBlock", "text": "Treatment name", "weight": "Bolder", "size": "Small" },
+        { "type": "Input.Text", "id": "name", "value": "Pro Setup Upgrade" },
+        { "type": "TextBlock", "text": "Headline", "weight": "Bolder", "size": "Small" },
+        { "type": "Input.Text", "id": "headline", "value": "Complete your Surface Pro" },
+        { "type": "TextBlock", "text": "Message body", "weight": "Bolder", "size": "Small" },
+        { "type": "Input.Text", "id": "body", "isMultiline": true, "value": "Add Surface Pro Keyboard and Surface Slim Pen to unlock a more productive, flexible setup wherever your day takes you." },
+        { "type": "TextBlock", "text": "Call to action", "weight": "Bolder", "size": "Small" },
+        { "type": "Input.Text", "id": "cta", "value": "Shop Pro Bundle" },
+        { "type": "TextBlock", "text": "Marketing principle", "weight": "Bolder", "size": "Small" },
+        { "type": "Input.ChoiceSet", "id": "marketingPrinciple", "value": "value", "choices": [
+          { "title": "Value framing", "value": "value" },
+          { "title": "Social proof", "value": "social-proof" },
+          { "title": "Scarcity", "value": "scarcity" },
+          { "title": "Reciprocity", "value": "reciprocity" }
+        ] }
+      ],
+      "actions": [ { "type": "Action.Submit", "title": "Save changes", "style": "positive", "data": { "verb": "updateTreatment", "treatmentId": "t1", "actionId": "surface-pro-accessory-bundle" } } ]
+    } },
+    { "type": "Action.Execute", "title": "Regenerate", "verb": "regenerateTreatment", "data": { "treatmentId": "t1", "actionId": "surface-pro-accessory-bundle" } },
+    { "type": "Action.Execute", "title": "Approve", "verb": "approveTreatment", "data": { "treatmentId": "t1", "actionId": "surface-pro-accessory-bundle" }, "style": "positive" }
+  ]
+}

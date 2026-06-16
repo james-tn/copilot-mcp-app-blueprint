@@ -1,0 +1,76 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.27/MicrosoftTeams.schema.json",
+    "manifestVersion": "1.27",
+    "version": "1.0.0",
+    "id": "${{TEAMS_APP_ID}}",
+    "developer": {
+        "name": "Pega Blueprint POC",
+        "websiteUrl": "https://www.example.com",
+        "privacyUrl": "https://www.example.com/privacy",
+        "termsOfUseUrl": "https://www.example.com/termofuse"
+    },
+    "icons": {
+        "color": "color.png",
+        "outline": "outline.png"
+    },
+    "name": {
+        "short": "Pega Blueprint",
+        "full": "Pega Customer Engagement Blueprint (POC)"
+    },
+    "description": {
+        "short": "Design 1:1 customer engagement blueprints in chat.",
+        "full": "A proof-of-concept custom engine agent that recreates the Pega Customer Engagement Blueprint experience using Adaptive Cards for the UI and chat for natural-language control. Walk through Context, Setup, Personas, Brand, Experiences and Summary to design personalized customer engagement."
+    },
+    "accentColor": "#FFFFFF",
+    "supportsChannelFeatures": "tier1",
+    "copilotAgents": {
+        "customEngineAgents": [
+            {
+                "type": "bot",
+                "id": "${{BOT_ID}}"
+            }
+        ]
+    },
+    "bots": [
+        {
+            "botId": "${{BOT_ID}}",
+            "scopes": [
+                "copilot",
+                "personal",
+                "team"
+            ],
+            "supportsFiles": false,
+            "isNotificationOnly": false,
+            "commandLists": [
+                {
+                    "scopes": [
+                        "copilot",
+                        "personal"
+                    ],
+                    "commands": [
+                        {
+                            "title": "Open my blueprint",
+                            "description": "Open the current Customer Engagement Blueprint"
+                        },
+                        {
+                            "title": "Go to personas",
+                            "description": "Review the AI-generated customer personas"
+                        },
+                        {
+                            "title": "Generate experiences",
+                            "description": "Generate actions and channel messages"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "composeExtensions": [],
+    "configurableTabs": [],
+    "staticTabs": [],
+    "permissions": [
+        "identity",
+        "messageTeamMembers"
+    ],
+    "validDomains": []
+}

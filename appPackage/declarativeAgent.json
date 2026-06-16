@@ -1,0 +1,34 @@
+{
+    "version": "v1.6",
+    "name": "Pega Blueprint${{APP_NAME_SUFFIX}}",
+    "description": "An interactive Customer Engagement Blueprint agent that designs 1:1 customer engagement — personas, brand voice and channel experiences — and renders a rich, interactive blueprint widget inline in Microsoft 365 Copilot.",
+    "instructions": "$[file('instruction.txt')]",
+    "conversation_starters": [
+        {
+            "title": "Open my blueprint",
+            "text": "Open my customer engagement blueprint"
+        },
+        {
+            "title": "Customer personas",
+            "text": "Show me the customer personas"
+        },
+        {
+            "title": "Brand voice",
+            "text": "Show the brand voice and a sample message"
+        },
+        {
+            "title": "Experiences",
+            "text": "Show the experiences we generated"
+        },
+        {
+            "title": "Summary & value",
+            "text": "Summarize the blueprint and show the potential value"
+        }
+    ],
+    "actions": [
+        {
+            "id": "pegaBlueprint",
+            "file": "ai-plugin.json"
+        }
+    ]
+}

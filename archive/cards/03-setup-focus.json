@@ -1,0 +1,66 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "Step 2 of 6 · Setup", "isSubtle": true, "size": "Small", "weight": "Bolder", "color": "Accent" },
+    { "type": "TextBlock", "text": "Let's set the focus", "size": "Large", "weight": "Bolder", "wrap": true },
+    { "type": "TextBlock", "text": "Choose your industry, products, outcomes, and channels. The AI uses your selections to shape what it generates next.", "wrap": true, "isSubtle": true, "spacing": "None" },
+
+    {
+      "type": "FactSet",
+      "spacing": "Medium",
+      "facts": [
+        { "title": "Industry", "value": "Communications" }
+      ]
+    },
+
+    { "type": "TextBlock", "text": "Products and services", "weight": "Bolder", "size": "Small", "spacing": "Medium" },
+    { "type": "Input.Text", "id": "products", "value": "Mobile Plans, Device Purchase, Value-Added Services", "placeholder": "Comma-separated products" },
+
+    { "type": "TextBlock", "text": "What outcomes would you like to achieve?", "weight": "Bolder", "size": "Small", "spacing": "Medium" },
+    {
+      "type": "Input.ChoiceSet",
+      "id": "outcomes",
+      "isMultiSelect": true,
+      "style": "expanded",
+      "value": "Grow",
+      "choices": [
+        { "title": "Acquire", "value": "Acquire" },
+        { "title": "Grow", "value": "Grow" },
+        { "title": "Nurture", "value": "Nurture" },
+        { "title": "Onboard", "value": "Onboard" },
+        { "title": "Resilience & Collections", "value": "Resilience & Collections" },
+        { "title": "Retain", "value": "Retain" },
+        { "title": "Service", "value": "Service" }
+      ]
+    },
+
+    { "type": "TextBlock", "text": "What channels will you communicate on?", "weight": "Bolder", "size": "Small", "spacing": "Medium" },
+    {
+      "type": "Input.ChoiceSet",
+      "id": "channels",
+      "isMultiSelect": true,
+      "style": "expanded",
+      "value": "Mobile,Email",
+      "choices": [
+        { "title": "Agent Assisted (Retail / Branch)", "value": "Agent Assisted" },
+        { "title": "Call Center", "value": "Call Center" },
+        { "title": "Email", "value": "Email" },
+        { "title": "IVR", "value": "IVR" },
+        { "title": "Mobile", "value": "Mobile" },
+        { "title": "Paid Media", "value": "Paid Media" },
+        { "title": "Push Notifications", "value": "Push Notifications" },
+        { "title": "SMS", "value": "SMS" },
+        { "title": "Web", "value": "Web" }
+      ]
+    },
+
+    { "type": "TextBlock", "text": "Optional features", "weight": "Bolder", "size": "Small", "spacing": "Medium" },
+    { "type": "Input.Toggle", "id": "featureJourneys", "title": "Customer Journeys — organize experiences into journeys", "value": "true", "valueOn": "true", "valueOff": "false" },
+    { "type": "Input.Toggle", "id": "featureDataModel", "title": "Data Model — view and manage the data powering engagements", "value": "false", "valueOn": "true", "valueOff": "false" }
+  ],
+  "actions": [
+    { "type": "Action.Submit", "title": "Save focus & generate personas", "style": "positive", "data": { "verb": "setFocus", "blueprintId": "CDHBP-335041" } }
+  ]
+}

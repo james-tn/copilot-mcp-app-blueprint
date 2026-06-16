@@ -1,0 +1,52 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "ColumnSet",
+      "columns": [
+        {
+          "type": "Column",
+          "width": "stretch",
+          "items": [
+            { "type": "TextBlock", "text": "My Customer Engagement Blueprints", "size": "Large", "weight": "Bolder", "wrap": true }
+          ]
+        },
+        {
+          "type": "Column",
+          "width": "auto",
+          "verticalContentAlignment": "Center",
+          "items": [
+            {
+              "type": "ActionSet",
+              "actions": [
+                { "type": "Action.Submit", "title": "+ Create a Blueprint", "style": "positive", "data": { "verb": "createBlueprint" } }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "separator": true,
+      "spacing": "Medium",
+      "selectAction": { "type": "Action.Submit", "data": { "verb": "openBlueprint", "blueprintId": "CDHBP-335041" } },
+      "items": [
+        { "type": "TextBlock", "text": "Increase ARPU/ARPA / Maximize customer lifetime value", "weight": "Bolder", "wrap": true, "color": "Accent" },
+        { "type": "TextBlock", "text": "Communications  •  CDHBP-335041", "isSubtle": true, "spacing": "None", "size": "Small" },
+        { "type": "TextBlock", "text": "Maximize revenue from the existing base by finding expansion opportunities and preventing value leakage; cross-sell/upsell premium services, device upgrades, and add-ons.", "wrap": true, "spacing": "Small", "maxLines": 3 }
+      ]
+    },
+    {
+      "type": "Container",
+      "separator": true,
+      "selectAction": { "type": "Action.Submit", "data": { "verb": "openBlueprint", "blueprintId": "CDHBP-330012" } },
+      "items": [
+        { "type": "TextBlock", "text": "Onboard new customers faster", "weight": "Bolder", "wrap": true, "color": "Accent" },
+        { "type": "TextBlock", "text": "Banking  •  CDHBP-330012", "isSubtle": true, "spacing": "None", "size": "Small" }
+      ]
+    }
+  ]
+}

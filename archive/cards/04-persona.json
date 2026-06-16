@@ -1,0 +1,66 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "Step 3 of 6 · Personas", "isSubtle": true, "size": "Small", "weight": "Bolder", "color": "Accent" },
+    {
+      "type": "ColumnSet",
+      "columns": [
+        {
+          "type": "Column",
+          "width": "auto",
+          "items": [
+            { "type": "Image", "url": "https://picsum.photos/seed/chloe/96/96", "size": "Small", "style": "Person", "altText": "Connected Chloe" }
+          ]
+        },
+        {
+          "type": "Column",
+          "width": "stretch",
+          "verticalContentAlignment": "Center",
+          "items": [
+            { "type": "TextBlock", "text": "Connected Chloe", "weight": "Bolder", "size": "Medium", "wrap": true },
+            { "type": "TextBlock", "text": "Female · Career Builders", "isSubtle": true, "size": "Small", "spacing": "None" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "TextBlock",
+      "wrap": true,
+      "spacing": "Small",
+      "text": "Connected Chloe is in her late 30s balancing a full-time job, a partner, and school-age kids while managing most of the household's tech decisions. She is frustrated by juggling too many bills, limited storage, and family members on mismatched plans, and is looking for simpler bundling, stronger security, and better value. She researches on her phone, reads reviews, and responds best to practical messaging about convenience, family protection, and clear monthly value."
+    }
+  ],
+  "actions": [
+    { "type": "Action.ShowCard", "title": "Edit", "card": {
+      "type": "AdaptiveCard",
+      "body": [
+        { "type": "TextBlock", "text": "Name", "weight": "Bolder", "size": "Small" },
+        { "type": "Input.Text", "id": "name", "value": "Connected Chloe" },
+        { "type": "TextBlock", "text": "Description", "weight": "Bolder", "size": "Small" },
+        { "type": "Input.Text", "id": "description", "isMultiline": true, "value": "Connected Chloe is in her late 30s ..." },
+        {
+          "type": "ColumnSet",
+          "columns": [
+            { "type": "Column", "width": "stretch", "items": [
+              { "type": "TextBlock", "text": "Gender", "weight": "Bolder", "size": "Small" },
+              { "type": "Input.ChoiceSet", "id": "gender", "value": "Female", "choices": [
+                { "title": "Female", "value": "Female" }, { "title": "Male", "value": "Male" }, { "title": "Non-binary", "value": "Non-binary" }
+              ] }
+            ] },
+            { "type": "Column", "width": "stretch", "items": [
+              { "type": "TextBlock", "text": "Age band", "weight": "Bolder", "size": "Small" },
+              { "type": "Input.ChoiceSet", "id": "ageBand", "value": "Career Builders", "choices": [
+                { "title": "Gen Z / Students", "value": "Students" }, { "title": "Career Builders", "value": "Career Builders" }, { "title": "Established", "value": "Established" }
+              ] }
+            ] }
+          ]
+        }
+      ],
+      "actions": [ { "type": "Action.Submit", "title": "Save persona", "style": "positive", "data": { "verb": "savePersona", "personaId": "chloe" } } ]
+    } },
+    { "type": "Action.Execute", "title": "Regenerate", "verb": "regeneratePersona", "data": { "personaId": "chloe" } },
+    { "type": "Action.Execute", "title": "Delete", "verb": "deletePersona", "data": { "personaId": "chloe" }, "style": "destructive" }
+  ]
+}

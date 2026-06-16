@@ -1,0 +1,66 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "Hang tight, big things are happening", "size": "Large", "weight": "Bolder", "wrap": true },
+    { "type": "TextBlock", "text": "Generating your Experiences…", "isSubtle": true, "spacing": "None", "wrap": true },
+
+    {
+      "type": "ColumnSet",
+      "spacing": "Medium",
+      "columns": [
+        { "type": "Column", "width": "auto", "items": [ { "type": "TextBlock", "text": "✅", "size": "Small" } ] },
+        { "type": "Column", "width": "stretch", "items": [
+          { "type": "TextBlock", "text": "Strategy Agent", "weight": "Bolder", "size": "Small", "wrap": true },
+          { "type": "TextBlock", "text": "Outline Action Strategy", "isSubtle": true, "size": "Small", "spacing": "None", "wrap": true }
+        ] },
+        { "type": "Column", "width": "auto", "verticalContentAlignment": "Center", "items": [ { "type": "TextBlock", "text": "Completed", "size": "Small", "color": "Good" } ] }
+      ]
+    },
+    {
+      "type": "ColumnSet",
+      "columns": [
+        { "type": "Column", "width": "auto", "items": [ { "type": "TextBlock", "text": "🔄", "size": "Small" } ] },
+        { "type": "Column", "width": "stretch", "items": [
+          { "type": "TextBlock", "text": "Marketing Analyst", "weight": "Bolder", "size": "Small", "wrap": true },
+          { "type": "TextBlock", "text": "Establishing Marketing Plan", "isSubtle": true, "size": "Small", "spacing": "None", "wrap": true }
+        ] },
+        { "type": "Column", "width": "auto", "verticalContentAlignment": "Center", "items": [ { "type": "TextBlock", "text": "Analyzing", "size": "Small", "color": "Accent" } ] }
+      ]
+    },
+    {
+      "type": "ColumnSet",
+      "columns": [
+        { "type": "Column", "width": "auto", "items": [ { "type": "TextBlock", "text": "⚪", "size": "Small" } ] },
+        { "type": "Column", "width": "stretch", "items": [
+          { "type": "TextBlock", "text": "Creative Agent", "weight": "Bolder", "size": "Small", "wrap": true },
+          { "type": "TextBlock", "text": "Imagining New Copy & Image", "isSubtle": true, "size": "Small", "spacing": "None", "wrap": true }
+        ] },
+        { "type": "Column", "width": "auto", "verticalContentAlignment": "Center", "items": [ { "type": "TextBlock", "text": "Pending", "size": "Small", "isSubtle": true } ] }
+      ]
+    },
+    {
+      "type": "ColumnSet",
+      "columns": [
+        { "type": "Column", "width": "auto", "items": [ { "type": "TextBlock", "text": "⚪", "size": "Small" } ] },
+        { "type": "Column", "width": "stretch", "items": [
+          { "type": "TextBlock", "text": "Brand Agent", "weight": "Bolder", "size": "Small", "wrap": true },
+          { "type": "TextBlock", "text": "Critiquing New Actions", "isSubtle": true, "size": "Small", "spacing": "None", "wrap": true }
+        ] },
+        { "type": "Column", "width": "auto", "verticalContentAlignment": "Center", "items": [ { "type": "TextBlock", "text": "Pending", "size": "Small", "isSubtle": true } ] }
+      ]
+    },
+    {
+      "type": "ColumnSet",
+      "columns": [
+        { "type": "Column", "width": "auto", "items": [ { "type": "TextBlock", "text": "⚪", "size": "Small" } ] },
+        { "type": "Column", "width": "stretch", "items": [
+          { "type": "TextBlock", "text": "Creative Agent", "weight": "Bolder", "size": "Small", "wrap": true },
+          { "type": "TextBlock", "text": "Updating Actions", "isSubtle": true, "size": "Small", "spacing": "None", "wrap": true }
+        ] },
+        { "type": "Column", "width": "auto", "verticalContentAlignment": "Center", "items": [ { "type": "TextBlock", "text": "Pending", "size": "Small", "isSubtle": true } ] }
+      ]
+    }
+  ]
+}

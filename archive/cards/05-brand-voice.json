@@ -1,0 +1,52 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "text": "Step 4 of 6 · Brand", "isSubtle": true, "size": "Small", "weight": "Bolder", "color": "Accent" },
+    { "type": "TextBlock", "text": "Validate your brand voice", "size": "Large", "weight": "Bolder", "wrap": true },
+    { "type": "TextBlock", "text": "Toggle the voice characteristics the AI should apply to every generated message.", "wrap": true, "isSubtle": true, "spacing": "None" },
+
+    {
+      "type": "Container",
+      "style": "emphasis",
+      "spacing": "Medium",
+      "items": [
+        { "type": "Input.Toggle", "id": "voiceValueLed", "title": "Value-Led", "value": "true", "valueOn": "true", "valueOff": "false" },
+        { "type": "TextBlock", "text": "Lead with the benefit, then the recommendation.", "wrap": true, "isSubtle": true, "size": "Small", "spacing": "None" }
+      ]
+    },
+    {
+      "type": "Container",
+      "style": "emphasis",
+      "spacing": "Small",
+      "items": [
+        { "type": "Input.Toggle", "id": "voicePlainspoken", "title": "Plainspoken Precision", "value": "true", "valueOn": "true", "valueOff": "false" },
+        { "type": "TextBlock", "text": "Clear, specific, easy to act on. Plain words, concrete numbers.", "wrap": true, "isSubtle": true, "size": "Small", "spacing": "None" }
+      ]
+    },
+    {
+      "type": "Container",
+      "style": "emphasis",
+      "spacing": "Small",
+      "items": [
+        { "type": "Input.Toggle", "id": "voiceLifeAware", "title": "Life-Aware", "value": "true", "valueOn": "true", "valueOff": "false" },
+        { "type": "TextBlock", "text": "Tie every offer to a real-life moment.", "wrap": true, "isSubtle": true, "size": "Small", "spacing": "None" }
+      ]
+    },
+    {
+      "type": "Container",
+      "style": "emphasis",
+      "spacing": "Small",
+      "items": [
+        { "type": "Input.Toggle", "id": "voiceGuidedConfidence", "title": "Guided Confidence", "value": "true", "valueOn": "true", "valueOff": "false" },
+        { "type": "TextBlock", "text": "Recommend the next best step with a reason. Never aggressive.", "wrap": true, "isSubtle": true, "size": "Small", "spacing": "None" }
+      ]
+    }
+  ],
+  "actions": [
+    { "type": "Action.Submit", "title": "Save voice", "style": "positive", "data": { "verb": "saveVoice", "blueprintId": "CDHBP-335041" } },
+    { "type": "Action.Execute", "title": "Add characteristic", "verb": "addVoiceCharacteristic", "data": { "blueprintId": "CDHBP-335041" } },
+    { "type": "Action.Execute", "title": "Preview sample message", "verb": "previewTreatment", "data": { "blueprintId": "CDHBP-335041", "personaId": "chloe" } }
+  ]
+}
