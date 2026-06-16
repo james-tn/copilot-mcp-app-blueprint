@@ -93,8 +93,10 @@ async def show_blueprint(phase: str = "") -> types.CallToolResult:
 async def show_workflows() -> types.CallToolResult:
     """Render the workflows (Pega Case Types) generated for the application."""
     data = store.view_workflows()
+    bp = store.get()
+    whose = "the blueprint you created" if bp.get("origin") == "created" else "the sample blueprint"
     names = ", ".join(c["name"] for c in data["caseTypes"])
-    text = f"{len(data['caseTypes'])} workflows shown in the app: {names}."
+    text = f"{len(data['caseTypes'])} workflows in {whose} '{bp['title']}', shown in the app: {names}."
     return _result(text, data)
 
 
@@ -222,12 +224,14 @@ TOOL_SPECS: list[dict[str, Any]] = [
          "'how many workflows are there?' or 'what's the application about?'.")},
     {"name": "get_app_state", "handler": get_app_state, "ui": False,
      "description": (
-         "Return what the user is CURRENTLY doing in the Blueprint app — the active blueprint, which "
-         "design step they are viewing (overview/context/workflows/workflow-details/data/personas/"
-         "summary), the active workflow if any, and counts. Data only (no widget). CALL THIS FIRST "
-         "whenever the user refers to what's on screen ('this', 'here', 'the current/this blueprint', "
-         "'what I'm looking at', 'add a …', 'change …') so your answer matches the live app instead "
-         "of guessing. Cheap to call.")},
+         "Return what the user is CURRENTLY doing in the Blueprint app — the active blueprint, whether "
+         "the user CREATED it this session or it's the default sample (origin/createdThisSession), "
+         "which design step they are viewing, the active workflow, recent activity, and counts. Data "
+         "only (no widget). CALL THIS FIRST whenever the user refers to what's on screen or to their "
+         "own work ('this', 'here', 'the/this blueprint', 'the workflows I created', 'what I'm looking "
+         "at', 'add a …', 'change …') so your answer matches the live app. TRUST its provenance: if "
+         "createdThisSession is true, the blueprint IS the user's own creation — never call it "
+         "pre-built/default/sample, and never guess the user's role or unrelated intent. Cheap to call.")},
 ]
 
 PROMPT_SPECS: list[dict[str, Any]] = [

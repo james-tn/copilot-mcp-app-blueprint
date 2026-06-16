@@ -2,6 +2,7 @@ import React from "react";
 import { tokens, Text, Spinner, Button, Badge } from "@fluentui/react-components";
 import {
   ArrowLeft20Regular,
+  ArrowRight20Regular,
   FullScreenMaximize20Regular,
   FullScreenMinimize20Regular,
   CheckmarkCircle16Filled,
@@ -145,6 +146,65 @@ export function Stepper({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// Sequential Back / Next footer so users can walk through the six design steps
+// without hunting for the small stepper numbers (mirrors Pega's prev/next arrows).
+// "overview" is treated as step 0, before the six phases.
+export function StepNav({
+  view,
+  phases,
+  onNavigate,
+  onOverview,
+}: {
+  view: string;
+  phases: Phase[];
+  onNavigate: (phase: Phase) => void;
+  onOverview: () => void;
+}) {
+  const order = ["overview", ...phases];
+  const idx = order.indexOf(view);
+  if (idx < 0) return null; // not a linear step (e.g. error)
+  const prev = idx > 0 ? order[idx - 1] : null;
+  const next = idx < order.length - 1 ? order[idx + 1] : null;
+  const label = (p: string) => (p === "overview" ? "Overview" : PHASE_LABELS[p as Phase] ?? p);
+  const go = (p: string) => (p === "overview" ? onOverview() : onNavigate(p as Phase));
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+        marginTop: 4,
+        paddingTop: 12,
+        borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+      }}
+    >
+      <Button
+        appearance="secondary"
+        icon={<ArrowLeft20Regular />}
+        disabled={!prev}
+        onClick={() => prev && go(prev)}
+      >
+        {prev ? `Back: ${label(prev)}` : "Back"}
+      </Button>
+      {next ? (
+        <Button
+          appearance="primary"
+          icon={<ArrowRight20Regular />}
+          iconPosition="after"
+          onClick={() => go(next)}
+        >
+          Next: {label(next)}
+        </Button>
+      ) : (
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+          Last step
+        </Text>
+      )}
     </div>
   );
 }

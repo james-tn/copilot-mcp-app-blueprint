@@ -288,7 +288,8 @@ export function devResolve(name: string, args?: Record<string, unknown>): ToolDa
   if (name === "get_app_state") {
     const t = devCurrent?.title ?? "Employee Onboarding";
     const s = devCurrent?.subIndustry ?? "Human Resources";
-    return { view: "app-state", phase: "overview", phaseLabel: "Overview", title: t, subIndustry: s, counts: devCurrent?.counts ?? counts, summary: `The user is viewing the 'Overview' step of the blueprint '${t}'.` } as unknown as ToolData;
+    const created = !!devCurrent;
+    return { view: "app-state", phase: "overview", phaseLabel: "Overview", title: t, subIndustry: s, origin: created ? "created" : "seed", createdThisSession: created, recentActivity: created ? [`Created blueprint '${t}'`] : [], counts: devCurrent?.counts ?? counts, summary: `The user is on the 'Overview' step of '${t}'. ${created ? "The user CREATED this blueprint this session." : "This is the default sample blueprint."}` } as unknown as ToolData;
   }
   if (name === "show_workflows") return { view: "workflows", ...devHeader("workflows"), caseTypes: devCurrent?.caseTypes ?? caseSummaries } as unknown as ToolData;
   if (name === "show_workflow") {

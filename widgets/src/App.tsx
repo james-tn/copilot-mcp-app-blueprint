@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { ProgressBar, Text, Button, tokens } from "@fluentui/react-components";
 import { ErrorCircle24Regular } from "@fluentui/react-icons";
 import { useBridge } from "./mcp/McpBridge";
-import { Loading, Shell, TitleBar, Stepper, Card, TipBar, PromptChip } from "./components/ui";
+import { Loading, Shell, TitleBar, Stepper, StepNav, Card, TipBar, PromptChip } from "./components/ui";
 import { Overview } from "./views/Overview";
 import { ContextView } from "./views/Context";
 import { WorkflowsView } from "./views/Workflows";
@@ -141,6 +141,15 @@ export function App() {
             <Text>{data.message}</Text>
           </div>
         </Card>
+      )}
+
+      {data.view !== "error" && (
+        <StepNav
+          view={data.view}
+          phases={data.phases}
+          onNavigate={navigatePhase}
+          onOverview={() => run("show_blueprint")}
+        />
       )}
 
       <TipBar>

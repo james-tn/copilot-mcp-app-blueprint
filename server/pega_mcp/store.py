@@ -19,6 +19,10 @@ _current_id: str | None = None
 # what the user is currently looking at via ``app_state()`` / get_app_state.
 _current_phase: str = "overview"
 _current_case: str | None = None
+# Provenance + a short activity log so the agent knows what the USER has actually
+# done (created their own blueprint vs. just looking at the default sample) and can
+# narrate accurately instead of guessing.
+_activity: list[str] = []
 
 _AUTOMATED_TYPES = {"automation", "ai-agent"}
 
@@ -50,11 +54,20 @@ def _set_current(phase: str, case_id: str | None = None) -> None:
     _current_case = case_id
 
 
+def _log(action: str) -> None:
+    """Append a high-signal user action to the activity log (keeps the last 8)."""
+    global _activity
+    if _activity and _activity[-1] == action:
+        return
+    _activity.append(action)
+    _activity = _activity[-8:]
+
 
 def _ensure_seed() -> None:
     global _current_id
     if not _store:
         bp = data.make_seed_blueprint()
+        bp["origin"] = "seed"
         _store[bp["id"]] = bp
         _current_id = bp["id"]
 
@@ -79,9 +92,11 @@ def create_blueprint(industry: str, sub_industry: str, purpose: str,
     global _current_id
     _ensure_seed()
     bp = data.generate_blueprint(industry, sub_industry, purpose, description)
+    bp["origin"] = "created"
     _store[bp["id"]] = bp
     _current_id = bp["id"]
     _set_current("overview")
+    _log(f"Created blueprint '{bp['title']}' ({bp['industry']} · {bp['subIndustry']})")
     return bp
 
 
@@ -103,9 +118,18 @@ def app_state() -> dict[str, Any]:
     where = _PHASE_LABELS.get(phase, phase)
     if case_name:
         where = f"{where} → {case_name}"
+    origin = bp.get("origin", "seed")
+    created = origin == "created"
+    if created:
+        prov = ("The user CREATED this blueprint in the app this session — it is the "
+                "user's own work, NOT a pre-built sample. When the user asks about "
+                "'the workflows I created', these ARE them.")
+    else:
+        prov = ("This is the default sample blueprint that loads on start; the user "
+                "has not created one of their own yet this session.")
     summary = (
-        f"The user is viewing the '{where}' step of the blueprint "
-        f"'{bp['title']}' ({bp['subIndustry']} · {bp['id']}). "
+        f"The user is on the '{where}' step of the blueprint '{bp['title']}' "
+        f"({bp['industry']} · {bp['subIndustry']} · {bp['id']}). {prov} "
         f"It has {c['caseTypes']} workflows, {c['stages']} stages, {c['steps']} steps, "
         f"{c['dataObjects']} data objects and {c['personas']} personas."
     )
@@ -116,6 +140,9 @@ def app_state() -> dict[str, Any]:
         "industry": bp["industry"],
         "subIndustry": bp["subIndustry"],
         "purpose": bp["purpose"],
+        "origin": origin,
+        "createdThisSession": created,
+        "recentActivity": list(_activity),
         "phase": phase,
         "phaseLabel": _PHASE_LABELS.get(phase, phase),
         "activeCase": case_name,
