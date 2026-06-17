@@ -11,6 +11,7 @@ Every UI tool returns a :class:`mcp.types.CallToolResult` carrying:
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from mcp import types
@@ -71,6 +72,54 @@ async def create_blueprint(industry: str = "", sub_industry: str = "",
         f"Created '{bp['title']}' ({bp['subIndustry']}) — {c['caseTypes']} workflows, "
         f"{c['steps']} steps, {c['personas']} personas. Its overview is open in the app."
     )
+    return _result(text, data)
+
+
+async def author_blueprint(case_types: list | None = None, title: str = "",
+                           industry: str = "", sub_industry: str = "",
+                           purpose: str = "", description: str = "") -> types.CallToolResult:
+    """Create a blueprint from an explicit, described lifecycle (stages + typed steps)."""
+    # Some hosts serialize nested args as a JSON string — tolerate that.
+    if isinstance(case_types, str):
+        try:
+            case_types = json.loads(case_types)
+        except Exception:
+            case_types = None
+    if not case_types:
+        data = store.view_create()
+        return _result(
+            "To author a blueprint I need the workflow structure — one or more case types, "
+            "each with stages and typed steps. The create wizard is open in the app.",
+            data,
+        )
+    try:
+        bp = store.author_blueprint(case_types, title=title, industry=industry,
+                                    sub_industry=sub_industry, purpose=purpose,
+                                    description=description)
+    except Exception as exc:  # invalid structure → keep the app usable
+        cur = store.app_state()
+        return _result(f"I couldn't author that blueprint: {exc}", cur, ui=False)
+    data = store.view_overview(bp["id"])
+    c = store.blueprint_counts(bp)
+    text = (
+        f"Authored '{bp['title']}' — {c['caseTypes']} workflow(s), {c['stages']} stages, "
+        f"{c['steps']} steps. The draft overview is open in the app for review."
+    )
+    return _result(text, data)
+
+
+async def open_blueprint(blueprint: str = "") -> types.CallToolResult:
+    """Re-open a previously created blueprint (by id or title) and render its overview."""
+    bp = store.open_blueprint(blueprint)
+    if bp is None:
+        lst = store.list_blueprints()
+        names = ", ".join(f"'{b['title']}'" for b in lst["blueprints"]) or "none"
+        return _result(
+            f"I couldn't find a blueprint matching '{blueprint}'. Available: {names}.",
+            lst, ui=False,
+        )
+    data = store.view_overview(bp["id"])
+    text = f"Opened '{bp['title']}' — its overview is now showing in the app."
     return _result(text, data)
 
 
@@ -246,6 +295,31 @@ TOOL_SPECS: list[dict[str, Any]] = [
          "their work: 'list the blueprints I created', 'what blueprints do I have', 'show my blueprints', "
          "'how many blueprints did I make'. Trust the provenance — created blueprints ARE the user's own "
          "work, not samples.")},
+    {"name": "open_blueprint", "handler": open_blueprint, "ui": True,
+     "description": (
+         "Re-open a previously created blueprint and make it the current one, rendering its overview. "
+         "Pass 'blueprint' as the blueprint's title (e.g. 'Card Servicing') or its id (e.g. 'BP-2027438'). "
+         "Use for 'open my Card Servicing blueprint', 'switch back to <name>', 'reopen the <name> "
+         "blueprint', 'go back to the blueprint I made earlier'. Call list_blueprints first if you don't "
+         "know the exact name. After this, show_* tools and edits apply to the re-opened blueprint.")},
+    {"name": "author_blueprint", "handler": author_blueprint, "ui": True,
+     "description": (
+         "Create a brand-new blueprint from an EXPLICIT, described workflow lifecycle (rather than the "
+         "templated create_blueprint). Use this when the user describes or pastes the actual stages and "
+         "steps they want — or when you derive them from their Microsoft 365 work context (a meeting, "
+         "email, Teams thread or SharePoint SOP) — so the blueprint mirrors THEIR real process. "
+         "Parameters: 'case_types' (REQUIRED) is an array of workflow objects; each has 'name', optional "
+         "'primary' (boolean; the first is primary by default), optional 'description', and 'stages'. "
+         "Each stage has 'name', optional 'kind' ('primary' for the happy path or 'alternate' for "
+         "exceptions; default 'primary'), and 'steps'. Each step has 'name' and 'type', where type is one "
+         "of: collect, automation, decision, notification, document, ai-agent, approve, wait, resolve "
+         "(human labels like 'Collect information', 'AI Agent', 'Wait', 'Resolve' are also accepted). "
+         "Optional top-level: 'title', 'industry', 'sub_industry', 'purpose', 'description' (sensible "
+         "defaults are derived from the primary case if omitted). The server fills in personas, data "
+         "objects and integrations and opens the draft overview for the user to review. Example case_types: "
+         "[{\"name\":\"Capacity & Quota Management\",\"stages\":[{\"name\":\"Intake\",\"kind\":\"primary\",\"steps\":"
+         "[{\"name\":\"Capture Resource Request\",\"type\":\"collect\"},{\"name\":\"Validate Request "
+         "Completeness\",\"type\":\"decision\"}]}]}].")},
 ]
 
 PROMPT_SPECS: list[dict[str, Any]] = [

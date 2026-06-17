@@ -48,6 +48,14 @@
         {
             "name": "list_blueprints",
             "description": "List every blueprint in the app \u2014 the ones the USER created this session (origin=created) plus the default sample \u2014 each with its title, industry, sub-industry, purpose, counts, and whether it's the current one. Data only (no widget). Use whenever the user asks to enumerate their work: 'list the blueprints I created', 'what blueprints do I have', 'show my blueprints', 'how many blueprints did I make'. Trust the provenance \u2014 created blueprints ARE the user's own work, not samples."
+        },
+        {
+            "name": "open_blueprint",
+            "description": "Re-open a previously created blueprint and make it the current one, rendering its overview. Pass 'blueprint' as the blueprint's title (e.g. 'Card Servicing') or its id (e.g. 'BP-2027438'). Use for 'open my Card Servicing blueprint', 'switch back to <name>', 'reopen the <name> blueprint', 'go back to the blueprint I made earlier'. Call list_blueprints first if you don't know the exact name. After this, show_* tools and edits apply to the re-opened blueprint."
+        },
+        {
+            "name": "author_blueprint",
+            "description": "Create a brand-new blueprint from an EXPLICIT, described workflow lifecycle (rather than the templated create_blueprint). Use this when the user describes or pastes the actual stages and steps they want \u2014 or when you derive them from their Microsoft 365 work context (a meeting, email, Teams thread or SharePoint SOP) \u2014 so the blueprint mirrors THEIR real process. Parameters: 'case_types' (REQUIRED) is an array of workflow objects; each has 'name', optional 'primary' (boolean; the first is primary by default), optional 'description', and 'stages'. Each stage has 'name', optional 'kind' ('primary' for the happy path or 'alternate' for exceptions; default 'primary'), and 'steps'. Each step has 'name' and 'type', where type is one of: collect, automation, decision, notification, document, ai-agent, approve, wait, resolve (human labels like 'Collect information', 'AI Agent', 'Wait', 'Resolve' are also accepted). Optional top-level: 'title', 'industry', 'sub_industry', 'purpose', 'description' (sensible defaults are derived from the primary case if omitted). The server fills in personas, data objects and integrations and opens the draft overview for the user to review. Example case_types: [{\"name\":\"Capacity & Quota Management\",\"stages\":[{\"name\":\"Intake\",\"kind\":\"primary\",\"steps\":[{\"name\":\"Capture Resource Request\",\"type\":\"collect\"},{\"name\":\"Validate Request Completeness\",\"type\":\"decision\"}]}]}]."
         }
     ],
     "runtimes": [
@@ -302,6 +310,93 @@
                             "execution": {
                                 "taskSupport": "forbidden"
                             }
+                        },
+                        {
+                            "name": "open_blueprint",
+                            "description": "Re-open a previously created blueprint and make it the current one, rendering its overview. Pass 'blueprint' as the blueprint's title (e.g. 'Card Servicing') or its id (e.g. 'BP-2027438'). Use for 'open my Card Servicing blueprint', 'switch back to <name>', 'reopen the <name> blueprint', 'go back to the blueprint I made earlier'. Call list_blueprints first if you don't know the exact name. After this, show_* tools and edits apply to the re-opened blueprint.",
+                            "inputSchema": {
+                                "properties": {
+                                    "blueprint": {
+                                        "default": "",
+                                        "title": "Blueprint",
+                                        "type": "string"
+                                    }
+                                },
+                                "title": "open_blueprintArguments",
+                                "type": "object"
+                            },
+                            "annotations": {
+                                "readOnlyHint": true
+                            },
+                            "execution": {
+                                "taskSupport": "forbidden"
+                            },
+                            "_meta": {
+                                "ui": {
+                                    "resourceUri": "ui://pega-blueprint/app.html"
+                                },
+                                "ui/resourceUri": "ui://pega-blueprint/app.html"
+                            }
+                        },
+                        {
+                            "name": "author_blueprint",
+                            "description": "Create a brand-new blueprint from an EXPLICIT, described workflow lifecycle (rather than the templated create_blueprint). Use this when the user describes or pastes the actual stages and steps they want \u2014 or when you derive them from their Microsoft 365 work context (a meeting, email, Teams thread or SharePoint SOP) \u2014 so the blueprint mirrors THEIR real process. Parameters: 'case_types' (REQUIRED) is an array of workflow objects; each has 'name', optional 'primary' (boolean; the first is primary by default), optional 'description', and 'stages'. Each stage has 'name', optional 'kind' ('primary' for the happy path or 'alternate' for exceptions; default 'primary'), and 'steps'. Each step has 'name' and 'type', where type is one of: collect, automation, decision, notification, document, ai-agent, approve, wait, resolve (human labels like 'Collect information', 'AI Agent', 'Wait', 'Resolve' are also accepted). Optional top-level: 'title', 'industry', 'sub_industry', 'purpose', 'description' (sensible defaults are derived from the primary case if omitted). The server fills in personas, data objects and integrations and opens the draft overview for the user to review. Example case_types: [{\"name\":\"Capacity & Quota Management\",\"stages\":[{\"name\":\"Intake\",\"kind\":\"primary\",\"steps\":[{\"name\":\"Capture Resource Request\",\"type\":\"collect\"},{\"name\":\"Validate Request Completeness\",\"type\":\"decision\"}]}]}].",
+                            "inputSchema": {
+                                "properties": {
+                                    "case_types": {
+                                        "anyOf": [
+                                            {
+                                                "items": {},
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "title": "Case Types"
+                                    },
+                                    "title": {
+                                        "default": "",
+                                        "title": "Title",
+                                        "type": "string"
+                                    },
+                                    "industry": {
+                                        "default": "",
+                                        "title": "Industry",
+                                        "type": "string"
+                                    },
+                                    "sub_industry": {
+                                        "default": "",
+                                        "title": "Sub Industry",
+                                        "type": "string"
+                                    },
+                                    "purpose": {
+                                        "default": "",
+                                        "title": "Purpose",
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "default": "",
+                                        "title": "Description",
+                                        "type": "string"
+                                    }
+                                },
+                                "title": "author_blueprintArguments",
+                                "type": "object"
+                            },
+                            "annotations": {
+                                "readOnlyHint": true
+                            },
+                            "execution": {
+                                "taskSupport": "forbidden"
+                            },
+                            "_meta": {
+                                "ui": {
+                                    "resourceUri": "ui://pega-blueprint/app.html"
+                                },
+                                "ui/resourceUri": "ui://pega-blueprint/app.html"
+                            }
                         }
                     ]
                 }
@@ -317,7 +412,9 @@
                 "show_summary",
                 "get_blueprint_summary",
                 "get_app_state",
-                "list_blueprints"
+                "list_blueprints",
+                "open_blueprint",
+                "author_blueprint"
             ],
             "auth": {
                 "type": "OAuthPluginVault",

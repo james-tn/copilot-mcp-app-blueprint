@@ -232,7 +232,7 @@ export const devOverview = {
 // consistent (the real server keeps this as the "current" blueprint server-side).
 let devCurrent: {
   title: string; subIndustry: string; industry: string;
-  context: any; counts: any; caseTypes: any[];
+  context: any; counts: any; caseTypes: any[]; lifecycles?: Record<string, any[]>;
 } | null = null;
 
 function devHeader(phase: string) {
@@ -302,12 +302,46 @@ export function devResolve(name: string, args?: Record<string, unknown>): ToolDa
       : "No blueprints created yet this session — only the default sample is loaded. Open the create wizard to design one.";
     return { view: "blueprint-list", count: list.length, createdCount: created.length, blueprints: list, summary } as unknown as ToolData;
   }
+  if (name === "author_blueprint") {
+    const known = ["collect", "automation", "decision", "notification", "document", "ai-agent", "approve", "wait", "resolve"];
+    const alias: Record<string, string> = { "collect information": "collect", capture: "collect", "send notification": "notification", notify: "notification", "generate document": "document", "ai agent": "ai-agent", agent: "ai-agent", "approve/reject": "approve", approval: "approve", delay: "wait", pause: "wait", close: "resolve", complete: "resolve" };
+    const normType = (t: string) => { const k = (t || "").trim().toLowerCase(); return known.includes(k) ? k : (alias[k] ?? "collect"); };
+    const cts = (Array.isArray(args?.case_types) ? args!.case_types : []) as any[];
+    const summaries: any[] = []; const lifecycles: Record<string, any[]> = {};
+    let totStages = 0, totSteps = 0, totAuto = 0;
+    cts.forEach((c: any, ci: number) => {
+      const cid = ((c.name || `case-${ci}`).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")) || `case-${ci}`;
+      const stages = (c.stages || []).filter((s: any) => s && s.name).map((st: any, si: number) => {
+        const steps = (st.steps || []).filter((s: any) => s && s.name).map((s: any, i: number) => ({ id: `${cid}-s${si}-${i}`, name: s.name, type: normType(s.type) }));
+        const kind = (st.kind || "primary").toLowerCase() === "alternate" ? "alternate" : "primary";
+        return { id: `${cid}-${si}`, name: st.name, kind, processes: [], steps };
+      });
+      const steps = stages.flatMap((s: any) => s.steps);
+      const auto = steps.filter((s: any) => s.type === "automation" || s.type === "ai-agent").length;
+      totStages += stages.length; totSteps += steps.length; totAuto += auto;
+      lifecycles[cid] = stages;
+      summaries.push({ id: cid, name: c.name || `Workflow ${ci + 1}`, primary: ci === 0 ? c.primary !== false : !!c.primary, description: c.description || `${c.name} workflow.`, stageCount: stages.length, stepCount: steps.length, automations: auto });
+    });
+    if (!summaries.some((s) => s.primary) && summaries[0]) summaries[0].primary = true;
+    const primary = summaries.find((s) => s.primary) ?? summaries[0] ?? { name: "Authored Workflow" };
+    const title = (args?.title as string) || primary.name;
+    const sub = (args?.sub_industry as string) || "Operations";
+    const ind = (((args?.industry as string) || "Cross Industry").split(" (")[0]);
+    const ctx = { ...context, purpose: title, subIndustry: sub, industry: ind, description: (args?.description as string) || `${title} application, authored from a described process.` };
+    const gcounts = { ...counts, caseTypes: summaries.length, stages: totStages, steps: totSteps, automations: totAuto };
+    devCurrent = { title, subIndustry: sub, industry: ind, context: ctx, counts: gcounts, caseTypes: summaries, lifecycles };
+    return { view: "overview", ...header("context"), industry: ind, subIndustry: sub, title, counts: gcounts, context: ctx, caseTypes: summaries, resumePhase: "workflows" } as unknown as ToolData;
+  }
+  if (name === "open_blueprint") {
+    if (devCurrent) return { view: "overview", ...devHeader("context"), context: devCurrent.context, caseTypes: devCurrent.caseTypes, resumePhase: "workflows" } as unknown as ToolData;
+    return devOverview;
+  }
   if (name === "show_workflows") return { view: "workflows", ...devHeader("workflows"), caseTypes: devCurrent?.caseTypes ?? caseSummaries } as unknown as ToolData;
   if (name === "show_workflow") {
     if (devCurrent) {
       const cl = devCurrent.caseTypes;
       const active = cl.find((c: any) => caseArg && (c.id === caseArg || (c.name || "").toLowerCase().includes(caseArg.toLowerCase()))) ?? cl[0];
-      const stages = devGenLifecycle(active.name, !!active.primary);
+      const stages = devCurrent.lifecycles?.[active.id] ?? devGenLifecycle(active.name, !!active.primary);
       const steps = stages.flatMap((st: any) => [...st.steps, ...st.processes.flatMap((p: any) => p.steps)]);
       const cc = { stages: stages.length, primaryStages: stages.filter((s: any) => s.kind === "primary").length, alternateStages: stages.filter((s: any) => s.kind === "alternate").length, steps: steps.length, automations: steps.filter((s: any) => s.type === "automation" || s.type === "ai-agent").length };
       return { view: "workflow-details", ...devHeader("workflow-details"), caseList: cl.map((c: any) => ({ id: c.id, name: c.name, primary: c.primary })), activeCaseId: active.id, case: { id: active.id, name: active.name, description: active.description, primary: active.primary, stages, counts: cc } } as unknown as ToolData;

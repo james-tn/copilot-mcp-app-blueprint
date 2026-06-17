@@ -19,6 +19,8 @@ export const STEP_TYPE_META: Record<StepType, StepTypeMeta> = {
   document: { label: "Generate document", color: "#0e7490" },
   "ai-agent": { label: "AI Agent", color: "#8a6ded" },
   approve: { label: "Approve/Reject", color: "#0a66c2" },
+  wait: { label: "Wait", color: "#6b7280" },
+  resolve: { label: "Resolve", color: "#107c41" },
 };
 
 export function stepMeta(type: StepType): StepTypeMeta {

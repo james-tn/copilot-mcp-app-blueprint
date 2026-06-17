@@ -10,7 +10,7 @@ export type Phase =
 // Lifecycle step types (the building blocks of a Pega Case Lifecycle step).
 export type StepType =
   | "collect" | "automation" | "decision" | "notification"
-  | "document" | "ai-agent" | "approve";
+  | "document" | "ai-agent" | "approve" | "wait" | "resolve";
 
 export interface Counts {
   caseTypes: number;

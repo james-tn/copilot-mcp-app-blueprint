@@ -29,7 +29,39 @@ STEP_TYPES: dict[str, str] = {
     "document": "Generate document",
     "ai-agent": "AI Agent",
     "approve": "Approve/Reject",
+    "wait": "Wait",
+    "resolve": "Resolve",
 }
+
+# Synonyms the agent may emit (labels, verbs) → canonical step-type id. Anything
+# unrecognized falls back to "collect" so authored input never breaks the widget.
+_STEP_TYPE_ALIASES: dict[str, str] = {
+    "collect information": "collect", "collect": "collect", "capture": "collect",
+    "intake": "collect", "form": "collect", "gather": "collect", "input": "collect",
+    "automation": "automation", "automate": "automation", "integration": "automation",
+    "service": "automation", "api": "automation", "robotic": "automation", "task": "automation",
+    "decision": "decision", "decide": "decision", "gateway": "decision",
+    "evaluate": "decision", "check": "decision", "branch": "decision", "condition": "decision",
+    "send notification": "notification", "notification": "notification", "notify": "notification",
+    "email": "notification", "alert": "notification", "message": "notification",
+    "generate document": "document", "document": "document", "generate": "document", "report": "document",
+    "ai agent": "ai-agent", "ai-agent": "ai-agent", "aiagent": "ai-agent",
+    "agent": "ai-agent", "ai": "ai-agent", "genai": "ai-agent",
+    "approve/reject": "approve", "approve": "approve", "approval": "approve",
+    "reject": "approve", "review": "approve", "sign-off": "approve", "signoff": "approve",
+    "wait": "wait", "delay": "wait", "pause": "wait", "hold": "wait", "timer": "wait",
+    "resolve": "resolve", "resolution": "resolve", "close": "resolve",
+    "complete": "resolve", "completion": "resolve", "finish": "resolve", "done": "resolve",
+}
+
+
+def normalize_step_type(value: str) -> str:
+    """Map a free-form step-type label/verb to a canonical id (fallback: 'collect')."""
+    key = (value or "").strip().lower()
+    if key in STEP_TYPES:
+        return key
+    return _STEP_TYPE_ALIASES.get(key, "collect")
+
 
 # Inbound event channels offered by Pega Blueprint (Data & Integrations step).
 INBOUND_EVENTS = [
@@ -582,6 +614,99 @@ def generate_blueprint(industry: str, sub_industry: str, purpose: str,
         "personas": _gen_personas(sub_industry),
         "dataObjects": _gen_data_objects(purpose),
         "integrations": _gen_integrations(industry.split(" (")[0]),
+        "inboundEvents": _seed_inbound_events(),
+        "identity": "OpenID Connect (OIDC)",
+    }
+
+
+def _build_step(spec: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": _id("step"),
+        "name": (spec.get("name") or "Step").strip(),
+        "type": normalize_step_type(spec.get("type", "")),
+    }
+
+
+def _build_stage(spec: dict[str, Any]) -> dict[str, Any]:
+    kind = (spec.get("kind") or "primary").strip().lower()
+    if kind not in ("primary", "alternate"):
+        kind = "primary"
+    steps = [_build_step(s) for s in (spec.get("steps") or []) if (s.get("name") or "").strip()]
+    processes: list[dict[str, Any]] = []
+    for p in (spec.get("processes") or []):
+        psteps = [_build_step(s) for s in (p.get("steps") or []) if (s.get("name") or "").strip()]
+        if psteps:
+            processes.append({"id": _id("proc"), "name": (p.get("name") or "Process").strip(),
+                              "steps": psteps})
+    return {"id": _id("stage"), "name": (spec.get("name") or "Stage").strip(), "kind": kind,
+            "steps": steps, "processes": processes}
+
+
+def _build_case(spec: dict[str, Any], *, primary_default: bool) -> dict[str, Any]:
+    name = (spec.get("name") or "Workflow").strip()
+    stages = [_build_stage(s) for s in (spec.get("stages") or []) if (s.get("name") or "").strip()]
+    return {
+        "id": _slug(name),
+        "name": name,
+        "primary": bool(spec.get("primary", primary_default)),
+        "description": (spec.get("description") or f"{name} workflow.").strip(),
+        "stages": stages,
+    }
+
+
+def build_blueprint(case_types: list[dict[str, Any]], *, title: str = "",
+                    industry: str = "", sub_industry: str = "", purpose: str = "",
+                    description: str = "") -> dict[str, Any]:
+    """Build a blueprint from an explicit, caller-provided lifecycle (the *author* path).
+
+    The agent supplies the rich part — the case types, stages and typed steps it
+    parsed from the user's request or work context — and this fills in the surrounding
+    scaffolding (personas, data objects, integrations, identity, org metadata) exactly
+    the way ``generate_blueprint`` does, so an authored blueprint is as complete as a
+    generated one. Caller input is normalized (step-type synonyms coerced, stage kind
+    defaulted, ids generated) so messy input never breaks the widget.
+    """
+    industry = (industry or "Cross Industry").split(" (")[0].strip() or "Cross Industry"
+    sub_industry = (sub_industry or "Operations").strip()
+
+    norm_cases: list[dict[str, Any]] = []
+    for i, c in enumerate(case_types or []):
+        case = _build_case(c, primary_default=(i == 0))
+        if case["stages"]:
+            norm_cases.append(case)
+    if not norm_cases:
+        raise ValueError(
+            "author_blueprint needs at least one case type with stages and steps")
+    # exactly one primary case
+    seen_primary = False
+    for c in norm_cases:
+        if c["primary"] and not seen_primary:
+            seen_primary = True
+        elif c["primary"]:
+            c["primary"] = False
+    if not seen_primary:
+        norm_cases[0]["primary"] = True
+
+    primary = next(c for c in norm_cases if c["primary"])
+    title = (title or primary["name"]).strip()
+    purpose = (purpose or primary["name"]).strip()
+    desc = (description or
+            f"{purpose} application with {len(norm_cases)} workflow(s), authored from a "
+            f"described process.").strip()
+    return {
+        "id": _new_bp_id(),
+        "title": title,
+        "industry": industry,
+        "subIndustry": sub_industry,
+        "purpose": purpose,
+        "description": desc,
+        "orgName": "Microsoft",
+        "location": "United States",
+        "language": "English",
+        "caseTypes": norm_cases,
+        "personas": _gen_personas(sub_industry),
+        "dataObjects": _gen_data_objects(purpose),
+        "integrations": _gen_integrations(industry),
         "inboundEvents": _seed_inbound_events(),
         "identity": "OpenID Connect (OIDC)",
     }

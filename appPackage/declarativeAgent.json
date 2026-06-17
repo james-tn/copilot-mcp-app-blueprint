@@ -25,6 +25,13 @@
             "text": "Show the data objects and integrations"
         }
     ],
+    "capabilities": [
+        { "name": "People" },
+        { "name": "Email" },
+        { "name": "Meetings" },
+        { "name": "TeamsMessages" },
+        { "name": "OneDriveAndSharePoint" }
+    ],
     "actions": [
         {
             "id": "pegaBlueprint",

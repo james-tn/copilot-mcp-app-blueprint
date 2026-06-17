@@ -82,6 +82,46 @@ async def main() -> None:
             assert "Claims Intake" in created_titles, lst
             assert any(b.get("isCurrent") for b in lst["blueprints"]), lst
 
+            # Author a blueprint from an EXPLICIT described lifecycle (incl. wait + resolve
+            # step types) — general workflow modeling, the foundation for WorkIQ grounding.
+            authored = await call(
+                "author_blueprint",
+                title="Capacity & Quota Management",
+                industry="Cross Industry",
+                sub_industry="Cloud Operations",
+                case_types=[{
+                    "name": "Capacity & Quota Management",
+                    "stages": [
+                        {"name": "Intake", "kind": "primary", "steps": [
+                            {"name": "Capture Resource Request", "type": "collect"},
+                            {"name": "Validate Request Completeness", "type": "decision"},
+                        ]},
+                        {"name": "Quota adjustment", "kind": "primary", "steps": [
+                            {"name": "Submit Quota Increase Request", "type": "automation"},
+                            {"name": "Wait for Quota Approval Response", "type": "wait"},
+                        ]},
+                        {"name": "Monitoring and closure", "kind": "primary", "steps": [
+                            {"name": "Generate Capacity and Quota Insights", "type": "ai-agent"},
+                            {"name": "Resolve Capacity and Quota Management Case", "type": "resolve"},
+                        ]},
+                    ],
+                }],
+            )
+            assert authored.get("view") == "overview", authored
+            assert authored.get("title") == "Capacity & Quota Management", authored
+            acase = authored["caseTypes"][0]
+            assert acase["name"] == "Capacity & Quota Management", authored
+            # the authored, typed steps survive round-trip (wait + resolve preserved)
+            adet = await call("show_workflow", case=acase["id"])
+            atypes = {s["type"] for st in adet["case"]["stages"] for s in st.get("steps", [])}
+            assert "wait" in atypes and "resolve" in atypes, atypes
+
+            # Re-open a previously created blueprint by title (switch the current one).
+            reopened = await call("open_blueprint", blueprint="Claims Intake")
+            assert reopened.get("view") == "overview" and reopened.get("title") == "Claims Intake", reopened
+            stt = await call("get_app_state")
+            assert stt.get("title") == "Claims Intake", stt
+
             # Read the widget resource.
             widget_uri = "ui://pega-blueprint/app.html"
             content = await session.read_resource(widget_uri)

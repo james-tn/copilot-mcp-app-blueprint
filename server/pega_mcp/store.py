@@ -100,6 +100,63 @@ def create_blueprint(industry: str, sub_industry: str, purpose: str,
     return bp
 
 
+def author_blueprint(case_types: list[dict[str, Any]], *, title: str = "",
+                     industry: str = "", sub_industry: str = "", purpose: str = "",
+                     description: str = "") -> dict[str, Any]:
+    """Create and make current a blueprint from an explicit, caller-provided lifecycle.
+
+    The author path: the agent passes the case types / stages / typed steps it parsed
+    from the user's described process or work context; the builder fills in the rest
+    (personas, data, integrations) so the draft is complete and renders immediately.
+    """
+    global _current_id
+    _ensure_seed()
+    bp = data.build_blueprint(case_types, title=title, industry=industry,
+                              sub_industry=sub_industry, purpose=purpose, description=description)
+    bp["origin"] = "created"
+    _store[bp["id"]] = bp
+    _current_id = bp["id"]
+    _set_current("overview")
+    c = blueprint_counts(bp)
+    _log(f"Authored blueprint '{bp['title']}' ({c['caseTypes']} workflows, {c['steps']} steps)")
+    return bp
+
+
+def open_blueprint(selector: str) -> dict[str, Any] | None:
+    """Switch the current blueprint to a previously created one (by id or title).
+
+    Returns the matched blueprint, or None if nothing matches. Matching tries exact
+    id, then title-contains, then id-contains, so the agent can pass either.
+    """
+    global _current_id
+    _ensure_seed()
+    sel = (selector or "").strip().lower()
+    if not sel:
+        return None
+    match: dict[str, Any] | None = None
+    for bp in _store.values():
+        if bp["id"].lower() == sel:
+            match = bp
+            break
+    if match is None:
+        for bp in _store.values():
+            if sel in bp["title"].lower():
+                match = bp
+                break
+    if match is None:
+        for bp in _store.values():
+            if sel in bp["id"].lower():
+                match = bp
+                break
+    if match is None:
+        return None
+    _current_id = match["id"]
+    _set_current("overview")
+    _log(f"Opened blueprint '{match['title']}'")
+    return match
+
+
+
 def list_blueprints() -> dict[str, Any]:
     """List every blueprint held in the store (the user's created ones + the sample).
 
