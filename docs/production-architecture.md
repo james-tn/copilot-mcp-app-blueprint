@@ -473,6 +473,16 @@ M365 Copilot, it can reach that context two complementary ways:
 > privilege by construction. It also fits the multi-tenant model (§2) for free:
 > the user's token already carries `tid`, so every M365 read is tenant-scoped.
 
+> **Already in this POC (Pattern A).** The declarative agent now declares M365
+> **capabilities** — `People`, `Email`, `Meetings`, `TeamsMessages`,
+> `OneDriveAndSharePoint` ([appPackage/declarativeAgent.json](../appPackage/declarativeAgent.json)) —
+> so **Copilot grounds the agent's reasoning** in the signed-in user's work context
+> with **no server code**, and the new `author_blueprint` tool lets the agent turn
+> that grounded context (e.g. a meeting or SOP) into a real lifecycle. The
+> server-side WorkIQ/Graph **tools** below (Patterns B/C) are the forward-looking
+> extension; the table in §6.1 maps each blueprint element to its grounding source
+> either way.
+
 ### 6.1 Personalization — grounding a blueprint in the customer's reality
 
 Instead of starting from a banking sample, the agent asks the organization's own
@@ -766,10 +776,13 @@ Defense in depth, mapped to Microsoft products:
    (Partner Center); add subscription/metering webhooks for tenant lifecycle.
 8. **Pipeline**: codify everything in Bicep + a CI/CD pipeline; add App
    Insights/OpenTelemetry and Defender/Sentinel.
-9. **M365 personalization** (§6): add WorkIQ + Microsoft Graph tools behind the
-   existing tool seam to ground blueprints in the tenant's real people/process/
-   systems and to collaborate back into Teams/Outlook/SharePoint/Planner — all via
-   **OBO** (as the user), with incremental delegated scopes and provenance on every
+9. **M365 personalization** (§6): **Pattern A is done** — the agent declares M365
+   capabilities (People, Email, Meetings, TeamsMessages, OneDriveAndSharePoint) and
+   `author_blueprint` turns grounded context into a lifecycle. Next: add WorkIQ +
+   Microsoft Graph **tools** behind the existing tool seam (Patterns B/C) for
+   deterministic grounding and to collaborate back into Teams/Outlook/SharePoint/
+   Planner — all via **OBO** (as the user), with incremental delegated scopes and
+   provenance on every
    AI-suggested field.
 
 See [architecture.md](architecture.md) for the MCP-Apps rendering contract and

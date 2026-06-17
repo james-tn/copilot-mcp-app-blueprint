@@ -45,11 +45,18 @@ This project started as an Adaptive Cards Custom Engine Agent (now in
 
 ## What you get
 
-- A **Python MCP server** (FastMCP) exposing 11 tools, a UI resource, and public
+- A **Python MCP server** (FastMCP) exposing 13 tools, a UI resource, and public
   export routes (PDF / Excel / importable JSON) — **pure-Python, zero compiled
   deps**, so it containerizes and builds anywhere.
 - A **React 18 + Fluent UI v9** widget, built by Vite into a **single self-contained
   HTML file** served as an MCP App resource.
+- **General workflow authoring** — beyond a templated generator, the agent can
+  `author_blueprint` from an explicit lifecycle (case types → stages → typed steps),
+  re-open prior blueprints, and list what the user created.
+- **Microsoft 365 work-context grounding** — declarative-agent **capabilities**
+  (People, Email, Meetings, Teams messages, SharePoint/OneDrive) let the agent
+  ground a design in the signed-in user's real org, meetings and docs — **as the
+  user**, no new data-access surface (see [docs/production-architecture.md](docs/production-architecture.md) §6).
 - A **declarative agent package** for Copilot (`appPackage/`).
 - **OAuth sign-in** with three selectable modes (anonymous, Entra, or any generic
   OAuth 2 IdP) — see [Security & login](#security--login).
@@ -64,6 +71,7 @@ flowchart LR
     U[User in M365 Copilot] -->|prompt| DA[Declarative Agent<br/>ai-plugin.json]
     DA -->|OAuth: bearer token| BRK[Microsoft token broker<br/>OAuthPluginVault]
     DA -->|MCP tool call + token| MW[Bearer auth middleware]
+    DA -. "capabilities: People · Email · Meetings · Teams · SharePoint" .-> M365[(M365 work context<br/>Graph semantic index)]
     subgraph ACA[Azure Container Apps]
       MW --> MCP[Python MCP server<br/>FastMCP]
       MCP -->|structuredContent| DA
@@ -86,6 +94,11 @@ flowchart LR
 5. The widget can call tools back (`callTool`) to drill down — e.g. open one
    workflow's case lifecycle (stages & steps) — without leaving the chat.
 
+Separately, the declarative agent's **capabilities** let Copilot ground the agent's
+reasoning in the signed-in user's **Microsoft 365 work context** (People, Email,
+Meetings, Teams, SharePoint/OneDrive) — *as the user*, so a design can mirror the
+org's real process, personas and approvers (see [docs/production-architecture.md](docs/production-architecture.md) §6).
+
 The MCP Apps link is the key convention: every UI tool carries
 `_meta.ui.resourceUri`, **on both the tool descriptor and each tool result**, and
 the widget is also advertised via `listResourceTemplates` so the host discovers it.
@@ -99,7 +112,7 @@ the widget is also advertised via `listResourceTemplates` so the host discovers 
 ├── server/            # Python MCP server (FastMCP, uv project)
 │   └── pega_mcp/
 │       ├── server.py        # bootstrap: resources, tools, auth middleware, export routes
-│       ├── tools.py         # 11 tool handlers (+ result _meta.ui.resourceUri)
+│       ├── tools.py         # 13 tool handlers (+ result _meta.ui.resourceUri)
 │       ├── store.py / data.py   # in-memory demo blueprint + view payloads
 │       ├── auth.py          # pure-Python bearer validation (Entra JWT or generic userinfo)
 │       ├── settings.py      # env-driven config (PEGA_MCP_*)
